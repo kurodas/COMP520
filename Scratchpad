@@ -1,0 +1,42 @@
+	private void parseProgram(){
+		//while(currentTerminal != eot){
+			
+		//}
+		parseClassDeclaration();
+	}
+	private void parseClassDeclaration(){
+		
+	}
+	private void parseFieldDeclaration(){
+		
+	}
+	private void parseMethodDeclaration(){
+		
+	}
+	private void parseVisibility(){
+		
+	}
+	private void parseAccess(){
+		
+	}
+	private void parseType(){
+		
+	}
+	private void parseParameterList(){
+		
+	}
+	private void parseArgumentList(){
+		
+	}
+	private void parseReference(){
+		
+	}
+	private void parseArrayReference(){
+		
+	}
+	private void parseStatement(){
+		
+	}
+	private void parseExpression(){
+		
+	}
