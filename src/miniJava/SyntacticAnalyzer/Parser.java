@@ -42,21 +42,24 @@ public class Parser {
 		accept(TokenKind.EOT);
 	}
 	
-	//ClassDeclaration ::= class id '{' (FieldDeclaration | MethodDeclaration)* '}'
+	//ClassDeclaration ::= class id { ( FieldOrMethodDeclaration )* } 
 	private void parseClassDeclaration(){
 		accept(TokenKind.CLASS);
 		accept(TokenKind.ID);
 		accept(TokenKind.LEFTBRACKET);
 		while(token.kind == )
 	}
-	
-	//FieldDeclaration ::= Visibility Access Type id ;
-	private void parseFieldDeclaration(){
-		
-	}
-	
-	//MethodDeclaration ::= Visibility Access (Type | void) id '(' ParameterList? ')' '{' Statement* '}'
-	private void parseMethodDeclaration(){
+	/*
+	 * FieldOrMethodDeclaration = Visibility Access
+			(
+			Type_Reference_ArrayReference id  
+				( ; | (ParameterList?) { Statement* } )
+			| void id (ParameterList?) { Statement* } 
+			)
+	 */
+	private void parseFieldOrMethodDeclaration(){
+		parseVisibility();
+		parseAccess();
 		
 	}
 	
@@ -69,13 +72,23 @@ public class Parser {
 	private void parseAccess(){
 		
 	}
-	
-	//Type ::= int | boolean | id | (int | id) '[' ']'
-	private void parseType(){
+	/*
+	 * Type_Reference_ArrayReference ::= 
+		id 
+		( 
+			([ (Expression ]  | ] ) )?
+			| ( . id)* 
+		) 
+		| int ([ ])?	//Types
+		| boolean	//Types
+		| (this ( . id)*)	//Reference
+
+	 */
+	private void parseTypeReferenceOrArrayReference(){
 		
 	}
 	
-	//ParameterList ::= Type id (',' Type id )*
+	//ParameterList ::= Type_Reference_ArrayReference id ( , Type_Reference_ArrayReference id )*	
 	private void parseParameterList(){
 		
 	}
@@ -85,38 +98,30 @@ public class Parser {
 		
 	}
 	
-	//Reference ::= Reference '.' id | (this | id)
-	private void parseReference(){
-		
-	}
-	
-	//ArrayReference ::= id '[' Expression ']'
-	private void parseArrayReference(){
-
-	}
-	
-	/*Statement ::=
-	 * 		'{' Statement* '}'
-	 * 	| 	Type id = Expression ';'
-	 * 	| 	Reference = Expression ';'
-	 * 	| 	ArrayReference = Expression ';'
-	 * 	| 	Reference '(' ArgumentList? ')' ';'
-	 * 	| 	return Expression? ';'
-	 * 	| 	if '(' Expression ')' Statement (else Statement)?
-	 * 	| 	while '(' Expression ')' Statement
+	/*
+	 * 	Statement ::=
+	 * 		{ Statement* }
+	 * 		| Type_Reference_ArrayReference 
+	 * 		(
+	 *			id = Expression
+	 *			| = Expression 
+	 *			| (ArgumentList?) 
+	 *		) ;
+	 *		| return Expression? ;
+	 *		| if ( Expression ) Statement (else Statement)? 
+	 *		| while ( Expression ) Statement
 	 */
 	private void parseStatement(){
 		
 	}
 	/*Expression ::=
-	 * 		Reference
-	 * 	| 	ArrayReference
-	 * 	| 	Reference '(' ArgumentList? ')' 
-	 * 	| 	unop Expression
-	 * 	| 	Expression binop Expression
-	 * 	| 	'(' Expression ')'
-	 * 	| 	num | true | false
-	 * 	| 	new ( id '('')' | int '[' Expression ']' | id '[' Expression ']' )
+		Type_Reference_ArrayReference ( ( ArgumentList? ) )? (binop Expression)*	
+		| unop Expression (binop Expression)*
+		| ( Expression ) (binop Expression)*
+		| num (binop Expression)*
+		| true (binop Expression)*
+		| false (binop Expression)*
+		| new (id ( ( ) | [ Expression ] ) | int [ Expression ]) (binop Expression)*
 	 * 
 	 */
 	private void parseExpression(){
