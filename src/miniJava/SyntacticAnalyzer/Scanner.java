@@ -2,6 +2,7 @@ package miniJava.SyntacticAnalyzer;
 
 import java.io.IOException;
 import java.io.InputStream;
+
 import miniJava.ErrorReporter;
 
 public class Scanner {
@@ -10,11 +11,10 @@ public class Scanner {
 
 	private char currentChar;
 	private StringBuilder currentSpelling;
-
+	
 	public Scanner(InputStream inputStream, ErrorReporter reporter) {
 		this.inputStream = inputStream;
 		this.reporter = reporter;
-
 		// initialize scanner state
 		readChar();
 	}
@@ -83,15 +83,19 @@ public class Scanner {
 		// collect spelling and identify token kind
 		currentSpelling = new StringBuilder();
 		TokenKind kind = scanToken();
-
 		// return new token
 		return new Token(kind, currentSpelling.toString());
 	}
 
 	public TokenKind scanToken() {
-		
 		// scan Token
 		switch (currentChar) {
+		//IDs must start with a letter
+		/* Keywords :
+		 * TRUE, FALSE, CLASS, VOID, PUBLIC, PRIVATE, 
+		 * STATIC, NEW, RETURN, IF, ELSE, WHILE, 
+		*/
+		
 		case 'a':  case 'b':  case 'c':  case 'd':  case 'e':
 	    case 'f':  case 'g':  case 'h':  case 'i':  case 'j':
 	    case 'k':  case 'l':  case 'm':  case 'n':  case 'o':
@@ -104,21 +108,47 @@ public class Scanner {
 	    case 'P':  case 'Q':  case 'R':  case 'S':  case 'T':
 	    case 'U':  case 'V':  case 'W':  case 'X':  case 'Y':
 	    case 'Z':
-	    case '_':
-	      takeIt();
-	      while (isAlpha(currentChar) || isDigit(currentChar) || currentChar == '_')
-	        takeIt();
-	      return TokenKind.ID;
+			takeIt();
+			while (isAlpha(currentChar) || isDigit(currentChar)
+					|| currentChar == '_')
+				takeIt();
+			// Check for keywords
+			if (currentSpelling.toString().equals("class")) {
+				return TokenKind.RETURN;
+			} else if (currentSpelling.toString().equals("void")) {
+				return TokenKind.VOID;
+			} else if (currentSpelling.toString().equals("public")) {
+				return TokenKind.PUBLIC;
+			} else if (currentSpelling.toString().equals("private")) {
+				return TokenKind.PRIVATE;
+			} else if (currentSpelling.toString().equals("static")) {
+				return TokenKind.STATIC;
+			} else if (currentSpelling.toString().equals("void")) {
+				return TokenKind.VOID;
+			} else if (currentSpelling.toString().equals("new")) {
+				return TokenKind.NEW;
+			} else if (currentSpelling.toString().equals("return")) {
+				return TokenKind.RETURN;
+			} else if (currentSpelling.toString().equals("if")) {
+				return TokenKind.IF;
+			} else if (currentSpelling.toString().equals("else")) {
+				return TokenKind.ELSE;
+			} else if (currentSpelling.toString().equals("while")) {
+				return TokenKind.WHILE;
+			} else if (currentSpelling.toString().equals("int")) {
+				return TokenKind.INT;
+			} else if (currentSpelling.toString().equals("boolean")) {
+				return TokenKind.BOOLEAN;
+			} else if (currentSpelling.toString().equals("this")) {
+				return TokenKind.THIS;
+			} else if (currentSpelling.toString().equals("true")) {
+				return TokenKind.TRUE;
+			} else if (currentSpelling.toString().equals("false")) {
+				return TokenKind.FALSE;
+			} else {// Token is not a keyword
+				return TokenKind.ID;
+			}
 	      
-		case '+':
-			takeIt();
-			return (TokenKind.PLUS);
-		case '*':
-			takeIt();
-			return (TokenKind.TIMES);
-		case '/':
-			takeIt();
-			return (TokenKind.DIVIDE);
 		case '(':
 			takeIt();
 			return (TokenKind.LEFTPAREN);
@@ -146,26 +176,6 @@ public class Scanner {
 		case '.':
 			takeIt();
 			return (TokenKind.DOT);
-		case '<':
-			takeIt();
-			if (currentChar == '=') {
-				return (TokenKind.LESSTHANEQUAL);
-			} else
-				return (TokenKind.LESSTHAN);
-		case '>':
-			takeIt();
-			if (currentChar == '=') {
-				return (TokenKind.GREATERTHANEQUAL);
-			} else
-				return (TokenKind.GREATERTHAN);
-		case '|':
-			takeIt();
-			if (currentChar == '|')
-				return (TokenKind.OR);
-		case '&':
-			takeIt();
-			if (currentChar == '&')
-				return (TokenKind.AND);
 		case '0':
 		case '1':
 		case '2':
@@ -183,6 +193,46 @@ public class Scanner {
 		case '$':
 			return (TokenKind.EOT);
 
+	    case '+':  case '-':  case '*': case '/':  case '=':  
+	    case '<':  case '>':  case '&': case '!':  case '|':
+			takeIt();
+			while (isOperator(currentChar))
+				takeIt();
+			if (currentSpelling.toString().equals("+")) {
+				return TokenKind.PLUS;
+			} else if (currentSpelling.toString().equals("-")) {
+				return TokenKind.MINUSORARITHMETICNEGATIVE;
+			} else if (currentSpelling.toString().equals("*")) {
+				return TokenKind.TIMES;
+			} else if (currentSpelling.toString().equals("/")) {
+				return TokenKind.DIVIDE;
+			} else if (currentSpelling.toString().equals("<")) {
+				return TokenKind.LESSTHAN;
+			} else if (currentSpelling.toString().equals(">")) {
+				return TokenKind.GREATERTHAN;
+			} else if (currentSpelling.toString().equals("<=")) {
+				return TokenKind.LESSTHANEQUAL;
+			} else if (currentSpelling.toString().equals(">=")) {
+				return TokenKind.GREATERTHANEQUAL;
+			} else if (currentSpelling.toString().equals("==")) {
+				return TokenKind.LOGICALEQUAL;
+			} else if (currentSpelling.toString().equals("!=")) {
+				return TokenKind.NOTEQUAL;
+			} else if (currentSpelling.toString().equals("=")) {
+				return TokenKind.ASSIGNMENTEQUALS;
+			} else if (currentSpelling.toString().equals("&&")) {
+				return TokenKind.AND;
+			} else if (currentSpelling.toString().equals("||")) {
+				return TokenKind.OR;
+			} else if (currentSpelling.toString().equals("!")) {
+				return TokenKind.LOGICALNEGATIVE;
+			}
+			//Return error if the string of operators is invalid
+			else{
+				scanError("Unrecognized operator '" + currentSpelling.toString() + "' in input");
+				return (TokenKind.ERROR);
+			}
+			 
 		default:
 			scanError("Unrecognized character '" + currentChar + "' in input");
 			return (TokenKind.ERROR);
@@ -208,7 +258,7 @@ public class Scanner {
 
 	private boolean isOperator(char c) {
 		return (c == '+' || c == '-' || c == '*' || c == '/' || c == '='
-				|| c == '<' || c == '>' || c == '&' || c == '%' || c == '!');
+				|| c == '<' || c == '>' || c == '&' || c == '!' || c == '|');
 	}
 
 	private void scanError(String m) {

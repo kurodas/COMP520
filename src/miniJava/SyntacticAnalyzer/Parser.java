@@ -47,7 +47,9 @@ public class Parser {
 		accept(TokenKind.CLASS);
 		accept(TokenKind.ID);
 		accept(TokenKind.LEFTBRACKET);
-		while(token.kind == )
+		while(token.kind != TokenKind.RIGHTBRACKET){
+			parseFieldOrMethodDeclaration();
+		}
 	}
 	/*
 	 * FieldOrMethodDeclaration = Visibility Access
@@ -60,12 +62,24 @@ public class Parser {
 	private void parseFieldOrMethodDeclaration(){
 		parseVisibility();
 		parseAccess();
-		
+		switch(token.kind){
+		case ID:{
+			parseTypeReferenceOrArrayReference();
+			accept(TokenKind.ID);
+			
+		}
+		case VOID:
+		}
 	}
 	
 	//Visibility ::= (public | private)?
 	private void parseVisibility(){
-		
+		switch(token.kind){
+		case PUBLIC:
+			acceptIt();
+		case PRIVATE:
+			acceptIt();
+		}	
 	}
 	
 	//Access ::= static?
@@ -126,6 +140,14 @@ public class Parser {
 	 */
 	private void parseExpression(){
 
+	}
+	
+	private void parseBinop(){
+		
+	}
+	
+	private void parseUnop(){
+		
 	}
 	
 	//    S ::= E$
