@@ -1,5 +1,7 @@
 package miniJava.SyntacticAnalyzer;
 
+import java.util.ArrayList;
+
 import miniJava.ErrorReporter;
 
 public class Parser {
@@ -309,65 +311,109 @@ public class Parser {
 	}
 	
 	/*Expression ::=
-		Type_Reference_ArrayReference ( ( ArgumentList? ) )? (binop Expression)*	
-		| unop Expression (binop Expression)*
-		| ( Expression ) (binop Expression)*
-		| num (binop Expression)*
-		| true (binop Expression)*
-		| false (binop Expression)*
-		| new (id ( ( ) | [ Expression ] ) | int [ Expression ]) (binop Expression)*
+	 * (
+	 * 		unop Expression
+	 *		| Type_Reference_ArrayReference ( ( ArgumentList? ) )? 
+	 *		| '(' Expression ')'
+	 *		| num | true | false
+	 *		| new (id ( ( ) | [ Expression ] ) | int [ Expression ])
+	 * )
+	 * (binop Expression)*
 	 * 
 	 */
 	private void parseExpression(){
 		switch(token.kind){
+		//	unop Expression
+		case LOGICALNEGATIVE:
+		case MINUSORARITHMETICNEGATIVE:
+			acceptIt();
+			parseExpression();
+			break;
+		//	Type_Reference_ArrayReference ( ( ArgumentList? ) )? 
 		case ID:
 			parseTypeReferenceOrArrayReference();
-//			if(token.kind ==)
-		}
-	}
-	
-	private void parseBinop(){
-		
-	}
-	
-	private void parseUnop(){
-		
-	}
-	
-	//    S ::= E$
-	private void parseS() throws SyntaxError {
-		parseE();
-		accept(TokenKind.EOT);
-	}
-
-	//    E ::= T (("+" | "*") T)*     
-	private void parseE() throws SyntaxError {
-		parseT();
-		while (token.kind == TokenKind.PLUS || token.kind == TokenKind.TIMES) {
-			acceptIt();
-			parseT();
-		} 
-	}
-
-	//   T ::= num | "(" E ")"
-	private void parseT() throws SyntaxError {
-		switch (token.kind) {
-
-		case NUM:
-			acceptIt();
-			return;
-
+			if(token.kind == TokenKind.LEFTPAREN){
+				accept(TokenKind.LEFTPAREN);
+				if(token.kind != TokenKind.RIGHTPAREN){
+					parseArgumentList();
+				}
+				accept(TokenKind.RIGHTPAREN);
+			}
+			break;
+		//	'(' Expression ')'
 		case LEFTPAREN:
-			acceptIt();
-			parseE();
+			accept(TokenKind.LEFTPAREN);
+			parseExpression();
 			accept(TokenKind.RIGHTPAREN);
-			return;
-
+			break;
+		//	num | true | false
+		case NUM:
+		case TRUE:
+		case FALSE:
+			acceptIt();
+			break;
+		//	new (id ( ( ) | [ Expression ] ) | int [ Expression ])
+		case NEW:
+			accept(TokenKind.NEW);
+			innerCaseSwitchForNEWCaseInParseExpression();
+			break;
 		default:
-			parseError("Invalid Term - expecting NUM or LPAREN but found " + token.kind);
+			parseError("Invalid Term - expecting LOGICALNEGATIVE, MINUSORARITHMETICNEGATIVE, ID, LEFTPAREN, NUM, TRUE, FALSE, or NEW but found "
+					+ token.kind);
+		}
+		//	(binop Expression)*
+		while (isBinop(token)) {
+			acceptIt();
+			parseExpression();
+		}
+		
+	}
+	//	(id ( ( ) | [ Expression ] ) | int [ Expression ])
+	private void innerCaseSwitchForNEWCaseInParseExpression(){
+		switch(token.kind){
+		case ID:
+			accept(TokenKind.ID);
+			if(token.kind == TokenKind.LEFTPAREN){
+				accept(TokenKind.LEFTPAREN);
+				accept(TokenKind.RIGHTPAREN);
+			}
+			else if(token.kind == TokenKind.LEFTSQUAREBRACKET){
+				accept(TokenKind.LEFTSQUAREBRACKET);
+				parseExpression();
+				accept(TokenKind.RIGHTSQUAREBRACKET);
+			}
+			break;
+		case INT:
+			accept(TokenKind.INT);
+			accept(TokenKind.LEFTSQUAREBRACKET);
+			parseExpression();
+			accept(TokenKind.RIGHTSQUAREBRACKET);
+			break;
+		default:
+			parseError("Invalid Term - expecting ID or INT but found " + token.kind);
 		}
 	}
-
+	
+	private boolean isBinop(Token t){
+		return t.kind == TokenKind.LESSTHAN 
+				|| t.kind == TokenKind.GREATERTHAN
+				|| t.kind == TokenKind.LOGICALEQUAL
+				|| t.kind == TokenKind.LESSTHANEQUAL
+				|| t.kind == TokenKind.GREATERTHANEQUAL
+				|| t.kind == TokenKind.NOTEQUAL
+				|| t.kind == TokenKind.AND
+				|| t.kind == TokenKind.OR
+				|| t.kind == TokenKind.PLUS
+				|| t.kind == TokenKind.MINUSORARITHMETICNEGATIVE
+				|| t.kind == TokenKind.TIMES
+				|| t.kind == TokenKind.DIVIDE;
+	}
+	
+	private boolean isUnop(Token t){
+		return t.kind == TokenKind.LOGICALNEGATIVE
+				|| t.kind == TokenKind.MINUSORARITHMETICNEGATIVE;
+	}
+	
 	/**
 	 * accept current token and advance to next token
 	 */
