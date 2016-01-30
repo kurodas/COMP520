@@ -1,7 +1,5 @@
 package miniJava.SyntacticAnalyzer;
 
-import java.util.ArrayList;
-
 import miniJava.ErrorReporter;
 
 public class Parser {
@@ -32,24 +30,25 @@ public class Parser {
 		token = scanner.scan();
 		try {
 			parseProgram();
+		} catch (SyntaxError e) {
+
 		}
-		catch (SyntaxError e) { }
 	}
 	
 	//Program ::= (ClassDeclaration)* eot
-	private void parseProgram(){
-		while(token.kind!= TokenKind.EOT){
+	private void parseProgram() {
+		while (token.kind != TokenKind.EOT) {
 			parseClassDeclaration();
 		}
 		accept(TokenKind.EOT);
 	}
 	
 	//ClassDeclaration ::= class id { ( FieldOrMethodDeclaration )* } 
-	private void parseClassDeclaration(){
+	private void parseClassDeclaration() {
 		accept(TokenKind.CLASS);
 		accept(TokenKind.ID);
 		accept(TokenKind.LEFTBRACKET);
-		while(token.kind != TokenKind.RIGHTBRACKET){
+		while (token.kind != TokenKind.RIGHTBRACKET) {
 			parseFieldOrMethodDeclaration();
 		}
 		accept(TokenKind.RIGHTBRACKET);
@@ -64,50 +63,58 @@ public class Parser {
 	private void parseFieldOrMethodDeclaration(){
 		parseVisibility();
 		parseAccess();
-		switch(token.kind){
-		case ID:{
+		switch (token.kind) {
+		case ID: {
 			parseFieldOrNonVoidMethodDeclaration();
 			return;
 		}
-		case VOID:{
+		case VOID: {
 			parseVoidMethodDeclaration();
 			return;
 		}
 		default:
-			parseError("Invalid Term - expecting ID or VOID but found " + token.kind);
+			parseError("Invalid Term - expecting ID or VOID but found "
+					+ token.kind);
 		}
 	}
 	/*
 	 * Type_Reference_ArrayReference id  
-	 *			( ; | (ParameterList?) { Statement* } )
+	 *			( ; | '(' ParameterList? ')' { Statement* } )
 	 */
-	private void parseFieldOrNonVoidMethodDeclaration(){
+	private void parseFieldOrNonVoidMethodDeclaration() {
 		parseTypeReferenceOrArrayReference();
 		accept(TokenKind.ID);
-		switch(token.kind){
+		switch (token.kind) {
 		case SEMICOLON:
-			acceptIt();
+			accept(TokenKind.SEMICOLON);
 			return;
-		case ID:{
-			parseParameterList();
+			
+		//	'(' ParameterList? ')' '{' Statement* '}' 
+		case LEFTPAREN: {
+			accept(TokenKind.LEFTPAREN);
+			if (token.kind != TokenKind.RIGHTPAREN) {
+				parseParameterList();
+			}
+			accept(TokenKind.RIGHTPAREN);
 			accept(TokenKind.LEFTBRACKET);
-			while(token.kind != TokenKind.RIGHTBRACKET)
+			while (token.kind != TokenKind.RIGHTBRACKET)
 				parseStatement();
 			accept(TokenKind.RIGHTBRACKET);
 			return;
 		}
 		default:
-			parseError("Invalid Term - expecting ID or SEMICOLON but found " + token.kind);
+			parseError("Invalid Term - expecting SEMICOLON or LEFTPAREN but found "
+					+ token.kind);
 		}
 	}
 	
 	//void id (ParameterList?) { Statement* } 
-	private void parseVoidMethodDeclaration(){
+	private void parseVoidMethodDeclaration() {
 		accept(TokenKind.VOID);
 		accept(TokenKind.ID);
 		parseParameterList();
 		accept(TokenKind.LEFTBRACKET);
-		while(token.kind != TokenKind.RIGHTBRACKET)
+		while (token.kind != TokenKind.RIGHTBRACKET)
 			parseStatement();
 		accept(TokenKind.RIGHTBRACKET);
 		return;
@@ -115,16 +122,8 @@ public class Parser {
 	
 	//Visibility ::= (public | private)?
 	private void parseVisibility(){
-		switch(token.kind){
-		case PUBLIC:
+		if (token.kind == TokenKind.PUBLIC || token.kind == TokenKind.PRIVATE)
 			acceptIt();
-			return;
-		case PRIVATE:
-			acceptIt();
-			return;
-		default:
-			return;
-		}	
 	}
 	
 	//Access ::= static?
@@ -136,8 +135,8 @@ public class Parser {
 	 * Type_Reference_ArrayReference ::= 
 		id 
 		( 
-			([ (Expression ]  | ] ) )?
-			| ( . id)* 
+			('[' (Expression ']' | ']' ) )?
+			| ( '.' id)* 
 		) 
 		| int ([ ])?	
 		| boolean	
@@ -148,16 +147,22 @@ public class Parser {
 		switch(token.kind){
 		case ID:
 			innerCaseSwitchForIDCaseInParseTypeReferenceOrArrayReference();
+				
+		//	int ([ ])?
 		case INT:
 			accept(TokenKind.INT);
-			if(token.kind == TokenKind.LEFTSQUAREBRACKET){
+			if (token.kind == TokenKind.LEFTSQUAREBRACKET) {
 				accept(TokenKind.LEFTSQUAREBRACKET);
 				accept(TokenKind.RIGHTSQUAREBRACKET);
 			}
 			return;
+			
+		//	boolean
 		case BOOLEAN:
 			accept(TokenKind.BOOLEAN);
 			return;
+			
+		//	(this ( . id)*)
 		case THIS: 	
 			accept(TokenKind.THIS);
 			while(token.kind == TokenKind.DOT){
@@ -166,8 +171,9 @@ public class Parser {
 			}
 			return;
 		default:
-			parseError("Invalid Term - expecting ID, INT, BOOLEAN, or THIS but found " + token.kind);
-		}	
+			parseError("Invalid Term - expecting ID, INT, BOOLEAN, or THIS but found "
+					+ token.kind);
+		}
 	}
 	
 	/*
@@ -180,6 +186,7 @@ public class Parser {
 	private void innerCaseSwitchForIDCaseInParseTypeReferenceOrArrayReference(){
 		accept(TokenKind.ID);
 		switch(token.kind){
+		//	( '[' ( Expression ']'  | ']' ) )?
 		case LEFTSQUAREBRACKET:
 			accept(TokenKind.LEFTSQUAREBRACKET);
 			if(token.kind == TokenKind.RIGHTSQUAREBRACKET){
@@ -190,6 +197,8 @@ public class Parser {
 				accept(TokenKind.RIGHTSQUAREBRACKET);
 			}
 			return;
+			
+		//	( '.' id)* 
 		case DOT:
 			while(token.kind == TokenKind.DOT){
 				accept(TokenKind.DOT);
@@ -205,6 +214,7 @@ public class Parser {
 	private void parseParameterList(){
 		parseTypeReferenceOrArrayReference();
 		accept(TokenKind.ID);
+		//	( , Type_Reference_ArrayReference id )*
 		while(token.kind == TokenKind.COMMA){
 			accept(TokenKind.COMMA);
 			parseTypeReferenceOrArrayReference();
@@ -216,6 +226,7 @@ public class Parser {
 	//ArgumentList ::= Expression (',' Expression)*
 	private void parseArgumentList(){
 		parseExpression();
+		//	(',' Expression)*
 		while(token.kind == TokenKind.COMMA){
 			accept(TokenKind.COMMA);
 			parseExpression();
@@ -237,6 +248,7 @@ public class Parser {
 	 */
 	private void parseStatement(){
 		switch(token.kind){
+		//	{ Statement* }
 		case LEFTBRACKET:
 			accept(TokenKind.LEFTBRACKET);
 			while(token.kind != TokenKind.RIGHTBRACKET){
@@ -246,6 +258,7 @@ public class Parser {
 		case ID:
 			innerCaseSwitchForIDCaseInParseStatement();
 			return;
+		//	return Expression? ;
 		case RETURN:
 			accept(TokenKind.RETURN);
 			if(token.kind != TokenKind.SEMICOLON){
@@ -253,6 +266,7 @@ public class Parser {
 			}
 			accept(TokenKind.SEMICOLON);
 			return;
+		//	if '(' Expression ')' Statement (else Statement)?
 		case IF:
 			accept(TokenKind.IF);
 			accept(TokenKind.LEFTPAREN);
@@ -264,6 +278,7 @@ public class Parser {
 				parseStatement();
 			}
 			return;
+		//	while '(' Expression ')' Statement
 		case WHILE:
 			accept(TokenKind.WHILE);
 			accept(TokenKind.LEFTPAREN);
@@ -288,15 +303,18 @@ public class Parser {
 	private void innerCaseSwitchForIDCaseInParseStatement(){
 		parseTypeReferenceOrArrayReference();
 		switch(token.kind){
+		//	id = Expression
 		case ID:
 			accept(TokenKind.ID);
 			accept(TokenKind.ASSIGNMENTEQUAL);
 			parseExpression();
 			break;
+		//	= Expression 
 		case ASSIGNMENTEQUAL:
 			accept(TokenKind.ASSIGNMENTEQUAL);
 			parseExpression();
 			break;
+		//	'(' ArgumentList? ')' 
 		case LEFTPAREN:
 			accept(TokenKind.LEFTPAREN);
 			if(token.kind != TokenKind.RIGHTPAREN){
@@ -368,21 +386,34 @@ public class Parser {
 		}
 		
 	}
-	//	(id ( ( ) | [ Expression ] ) | int [ Expression ])
+	/*	id 
+	 * 		( 
+	 * 		'(' ')' 
+	 * 		| '[' Expression ']' 
+	 * 		) 
+	 * 	| int '[' Expression ']'
+	 *  
+	 */
 	private void innerCaseSwitchForNEWCaseInParseExpression(){
 		switch(token.kind){
 		case ID:
 			accept(TokenKind.ID);
+			//	'(' ')'
 			if(token.kind == TokenKind.LEFTPAREN){
 				accept(TokenKind.LEFTPAREN);
 				accept(TokenKind.RIGHTPAREN);
 			}
+			//	'[' Expression ']'
 			else if(token.kind == TokenKind.LEFTSQUAREBRACKET){
 				accept(TokenKind.LEFTSQUAREBRACKET);
 				parseExpression();
 				accept(TokenKind.RIGHTSQUAREBRACKET);
 			}
+			else{
+				parseError("Invalid Term - expecting LEFTPAREN or LEFTSQUAREBRACKET but found " + token.kind);
+			}
 			break;
+		//	int '[' Expression ']'
 		case INT:
 			accept(TokenKind.INT);
 			accept(TokenKind.LEFTSQUAREBRACKET);
@@ -447,7 +478,7 @@ public class Parser {
 		throw new SyntaxError();
 	}
 
-	// show parse stack whenever terminal is  accepted
+	// show parse stack whenever terminal is accepted
 	private void pTrace() {
 		StackTraceElement [] stl = Thread.currentThread().getStackTrace();
 		for (int i = stl.length - 1; i > 0 ; i--) {
