@@ -219,7 +219,7 @@ public class Scanner {
 			} else if (currentSpelling.toString().equals("!=")) {
 				return TokenKind.NOTEQUAL;
 			} else if (currentSpelling.toString().equals("=")) {
-				return TokenKind.ASSIGNMENTEQUALS;
+				return TokenKind.ASSIGNMENTEQUAL;
 			} else if (currentSpelling.toString().equals("&&")) {
 				return TokenKind.AND;
 			} else if (currentSpelling.toString().equals("||")) {

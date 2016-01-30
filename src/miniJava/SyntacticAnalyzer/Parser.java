@@ -50,13 +50,13 @@ public class Parser {
 		while(token.kind != TokenKind.RIGHTBRACKET){
 			parseFieldOrMethodDeclaration();
 		}
+		accept(TokenKind.RIGHTBRACKET);
 	}
 	/*
 	 * FieldOrMethodDeclaration = Visibility Access
 			(
-			Type_Reference_ArrayReference id  
-				( ; | (ParameterList?) { Statement* } )
-			| void id (ParameterList?) { Statement* } 
+			FieldOrNonVoidMethodDeclaration
+			| VoidMethodDeclaration 
 			)
 	 */
 	private void parseFieldOrMethodDeclaration(){
@@ -64,12 +64,51 @@ public class Parser {
 		parseAccess();
 		switch(token.kind){
 		case ID:{
-			parseTypeReferenceOrArrayReference();
-			accept(TokenKind.ID);
-			
+			parseFieldOrNonVoidMethodDeclaration();
+			return;
 		}
-		case VOID:
+		case VOID:{
+			parseVoidMethodDeclaration();
+			return;
 		}
+		default:
+			parseError("Invalid Term - expecting ID or VOID but found " + token.kind);
+		}
+	}
+	/*
+	 * Type_Reference_ArrayReference id  
+	 *			( ; | (ParameterList?) { Statement* } )
+	 */
+	private void parseFieldOrNonVoidMethodDeclaration(){
+		parseTypeReferenceOrArrayReference();
+		accept(TokenKind.ID);
+		switch(token.kind){
+		case SEMICOLON:
+			acceptIt();
+			return;
+		case ID:{
+			parseParameterList();
+			accept(TokenKind.LEFTBRACKET);
+			while(token.kind != TokenKind.RIGHTBRACKET)
+				parseStatement();
+			accept(TokenKind.RIGHTBRACKET);
+			return;
+		}
+		default:
+			parseError("Invalid Term - expecting ID or SEMICOLON but found " + token.kind);
+		}
+	}
+	
+	//void id (ParameterList?) { Statement* } 
+	private void parseVoidMethodDeclaration(){
+		accept(TokenKind.VOID);
+		accept(TokenKind.ID);
+		parseParameterList();
+		accept(TokenKind.LEFTBRACKET);
+		while(token.kind != TokenKind.RIGHTBRACKET)
+			parseStatement();
+		accept(TokenKind.RIGHTBRACKET);
+		return;
 	}
 	
 	//Visibility ::= (public | private)?
@@ -77,14 +116,19 @@ public class Parser {
 		switch(token.kind){
 		case PUBLIC:
 			acceptIt();
+			return;
 		case PRIVATE:
 			acceptIt();
+			return;
+		default:
+			return;
 		}	
 	}
 	
 	//Access ::= static?
 	private void parseAccess(){
-		
+		if(token.kind == TokenKind.STATIC)
+			acceptIt();
 	}
 	/*
 	 * Type_Reference_ArrayReference ::= 
@@ -93,23 +137,87 @@ public class Parser {
 			([ (Expression ]  | ] ) )?
 			| ( . id)* 
 		) 
-		| int ([ ])?	//Types
-		| boolean	//Types
-		| (this ( . id)*)	//Reference
+		| int ([ ])?	
+		| boolean	
+		| (this ( . id)*)	
 
 	 */
 	private void parseTypeReferenceOrArrayReference(){
-		
+		switch(token.kind){
+		case ID:
+			innerCaseSwitchForIDCaseInParseTypeReferenceOrArrayReference();
+		case INT:
+			accept(TokenKind.INT);
+			if(token.kind == TokenKind.LEFTSQUAREBRACKET){
+				accept(TokenKind.LEFTSQUAREBRACKET);
+				accept(TokenKind.RIGHTSQUAREBRACKET);
+			}
+			return;
+		case BOOLEAN:
+			accept(TokenKind.BOOLEAN);
+			return;
+		case THIS: 	
+			accept(TokenKind.THIS);
+			while(token.kind == TokenKind.DOT){
+				accept(TokenKind.DOT);
+				accept(TokenKind.ID);
+			}
+			return;
+		default:
+			parseError("Invalid Term - expecting ID, INT, BOOLEAN, or THIS but found " + token.kind);
+		}	
+	}
+	
+	/*
+	 * 		id 
+	 *		( 
+	 *			( '[' ( Expression ']'  | ']' ) )?
+	 *			| ( '.' id)* 
+	 *		) 
+	 */
+	private void innerCaseSwitchForIDCaseInParseTypeReferenceOrArrayReference(){
+		accept(TokenKind.ID);
+		switch(token.kind){
+		case LEFTSQUAREBRACKET:
+			accept(TokenKind.LEFTSQUAREBRACKET);
+			if(token.kind == TokenKind.RIGHTSQUAREBRACKET){
+				accept(TokenKind.RIGHTSQUAREBRACKET);
+			}
+			else{
+				parseExpression();
+				accept(TokenKind.RIGHTSQUAREBRACKET);
+			}
+			return;
+		case DOT:
+			while(token.kind == TokenKind.DOT){
+				accept(TokenKind.DOT);
+				accept(TokenKind.ID);
+			}
+			return;
+		default:
+			return;
+		}
 	}
 	
 	//ParameterList ::= Type_Reference_ArrayReference id ( , Type_Reference_ArrayReference id )*	
 	private void parseParameterList(){
+		parseTypeReferenceOrArrayReference();
+		accept(TokenKind.ID);
+		while(token.kind == TokenKind.COMMA){
+			accept(TokenKind.COMMA);
+			parseTypeReferenceOrArrayReference();
+			accept(TokenKind.ID);
+		}
 		
 	}
 	
 	//ArgumentList ::= Expression (',' Expression)*
 	private void parseArgumentList(){
-		
+		parseExpression();
+		while(token.kind == TokenKind.COMMA){
+			accept(TokenKind.COMMA);
+			parseExpression();
+		}
 	}
 	
 	/*
@@ -126,8 +234,80 @@ public class Parser {
 	 *		| while ( Expression ) Statement
 	 */
 	private void parseStatement(){
+		switch(token.kind){
+		case LEFTBRACKET:
+			accept(TokenKind.LEFTBRACKET);
+			while(token.kind != TokenKind.RIGHTBRACKET){
+				parseStatement();
+			}
+			return;
+		case ID:
+			innerCaseSwitchForIDCaseInParseStatement();
+			return;
+		case RETURN:
+			accept(TokenKind.RETURN);
+			if(token.kind != TokenKind.SEMICOLON){
+				parseExpression();
+			}
+			accept(TokenKind.SEMICOLON);
+			return;
+		case IF:
+			accept(TokenKind.IF);
+			accept(TokenKind.LEFTPAREN);
+			parseExpression();
+			accept(TokenKind.RIGHTPAREN);
+			parseStatement();
+			if(token.kind == TokenKind.ELSE){
+				accept(TokenKind.ELSE);
+				parseStatement();
+			}
+			return;
+		case WHILE:
+			accept(TokenKind.WHILE);
+			accept(TokenKind.LEFTPAREN);
+			parseExpression();
+			accept(TokenKind.RIGHTPAREN);
+			parseStatement();
+			return;
+		default:
+			parseError("Invalid Term - expecting LEFTBRACKET, ID, RETURN, IF, or WHILE but found " + token.kind);
+		}
 		
 	}
+	/*
+	 * Type_Reference_ArrayReference 
+	 * 	(
+	 *		id = Expression
+	 *		| = Expression 
+	 *		| (ArgumentList?) 
+	 *	) 
+	 * ;
+	 */
+	private void innerCaseSwitchForIDCaseInParseStatement(){
+		parseTypeReferenceOrArrayReference();
+		switch(token.kind){
+		case ID:
+			accept(TokenKind.ID);
+			accept(TokenKind.ASSIGNMENTEQUAL);
+			parseExpression();
+			break;
+		case ASSIGNMENTEQUAL:
+			accept(TokenKind.ASSIGNMENTEQUAL);
+			parseExpression();
+			break;
+		case LEFTPAREN:
+			accept(TokenKind.LEFTPAREN);
+			if(token.kind != TokenKind.RIGHTPAREN){
+				parseArgumentList();
+			}
+			accept(TokenKind.RIGHTPAREN);
+			break;
+		default:
+			parseError("Invalid Term - expecting ID, ASSIGNMENTEQUALS, or LEFTPAREN but found " + token.kind);
+		}
+		accept(TokenKind.SEMICOLON);
+	}
+	
 	/*Expression ::=
 		Type_Reference_ArrayReference ( ( ArgumentList? ) )? (binop Expression)*	
 		| unop Expression (binop Expression)*
@@ -139,7 +319,11 @@ public class Parser {
 	 * 
 	 */
 	private void parseExpression(){
-
+		switch(token.kind){
+		case ID:
+			parseTypeReferenceOrArrayReference();
+//			if(token.kind ==)
+		}
 	}
 	
 	private void parseBinop(){
