@@ -21,7 +21,13 @@ public class Compiler {
 		}
 		else {
 			try {
-				inputStream = new FileInputStream(args[0]);
+				String fileExtension = getFileExtension(args[0]);
+				if(fileExtension.equalsIgnoreCase("java")
+						|| fileExtension.equalsIgnoreCase("mjava")){
+					inputStream = new FileInputStream(args[0]);
+				}
+				else
+					System.out.println("Input file is not of type java or mjava");
 			} catch (FileNotFoundException e) {
 				System.out.println("Input file " + args[0] + " not found");
 				System.exit(1);
@@ -43,5 +49,14 @@ public class Compiler {
 			System.out.println("valid arithmetic expression");
 			System.exit(0);
 		}
+	}
+	
+	private static String getFileExtension(String arg){
+		int index = arg.lastIndexOf('.');
+		String fileExtension = "";
+		if(index > 0){
+			fileExtension = arg.substring(index+1);
+		}
+		return fileExtension;
 	}
 }
