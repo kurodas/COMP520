@@ -83,16 +83,7 @@ public class Parser {
 	 *			( ; | '(' ParameterList? ')' '{' Statement* '}' )
 	 */
 	private void parseFieldOrNonVoidMethodDeclaration() {
-		if(token.kind == TokenKind.BOOLEAN || token.kind == TokenKind.INT){
-			parseBooleanIntOrIntArrayReference();
-		}
-		else if(token.kind == TokenKind.ID || token.kind == TokenKind.THIS){
-			parseNonPrimitiveReferenceOrArrayReference();
-		}
-		else{
-			parseError("Invalid Term - expecting ID, INT, BOOLEAN, or THIS but found "
-					+ token.kind);
-		}
+		parseTypeReferenceOrArrayReference();
 		accept(TokenKind.ID);
 		switch (token.kind) {
 		case SEMICOLON:
@@ -146,13 +137,28 @@ public class Parser {
 	}
 	/*
 	 * Type_Reference_ArrayReference ::= 
+	 * BooleanIntOrIntArrayReference
+	 * | NonPrimitiveReferenceOrArrayReference
+	 */
+	private void parseTypeReferenceOrArrayReference(){
+		if(token.kind == TokenKind.BOOLEAN || token.kind == TokenKind.INT){
+			parseBooleanIntOrIntArrayReference();
+		}
+		else if(token.kind == TokenKind.ID || token.kind == TokenKind.THIS){
+			parseNonPrimitiveReferenceOrArrayReference();
+		}
+		else{
+			parseError("Invalid Term - expecting ID, INT, BOOLEAN, or THIS but found "
+					+ token.kind);
+		}
+	}
+	/*
+	 * NonPrimitiveReferenceOrArrayReference ::= 
 		id 
 		( 
 			('[' (Expression ']' | ']' ) )?
 			| ( '.' id)* 
 		) 
-		| int ('[' ']')?	
-		| boolean	
 		| (this ( . id)*)	
 
 	 */
@@ -161,21 +167,6 @@ public class Parser {
 		case ID:
 			innerCaseSwitchForIDCaseInParseNonPrimitiveReferenceOrArrayReference();
 			return;	
-		//	int ('[' ']')?
-//		case INT:
-//			accept(TokenKind.INT);
-//			if (token.kind == TokenKind.LEFTSQUAREBRACKET) {
-//				accept(TokenKind.LEFTSQUAREBRACKET);
-//				accept(TokenKind.RIGHTSQUAREBRACKET);
-//			}
-//			return;
-//			
-//		//	boolean
-//		case BOOLEAN:
-//			accept(TokenKind.BOOLEAN);
-//			return;
-			
-		//	(this ( . id)*)
 		case THIS: 	
 			accept(TokenKind.THIS);
 			while(token.kind == TokenKind.DOT){
@@ -187,8 +178,9 @@ public class Parser {
 			parseError("Invalid Term - expecting ID, INT, BOOLEAN, or THIS but found "
 					+ token.kind);
 		}
+
+
 	}
-	
 	/*
 	 * 		id 
 	 *		( 
@@ -245,16 +237,7 @@ public class Parser {
 	
 	//ParameterList ::= Type_Reference_ArrayReference id ( ',' Type_Reference_ArrayReference id )*	
 	private void parseParameterList(){
-		if(token.kind == TokenKind.BOOLEAN || token.kind == TokenKind.INT){
-			parseBooleanIntOrIntArrayReference();
-		}
-		else if(token.kind == TokenKind.ID || token.kind == TokenKind.THIS){
-			parseNonPrimitiveReferenceOrArrayReference();
-		}
-		else{
-			parseError("Invalid Term - expecting ID, INT, BOOLEAN, or THIS but found "
-					+ token.kind);
-		}
+		parseTypeReferenceOrArrayReference();
 		accept(TokenKind.ID);
 		//	( , Type_Reference_ArrayReference id )*
 		while(token.kind == TokenKind.COMMA){
@@ -353,16 +336,7 @@ public class Parser {
 	 * ;
 	 */
 	private void innerCaseSwitchForIDINTBOOLEANTHISCasesInParseStatement(){
-		if(token.kind == TokenKind.BOOLEAN || token.kind == TokenKind.INT){
-			parseBooleanIntOrIntArrayReference();
-		}
-		else if(token.kind == TokenKind.ID || token.kind == TokenKind.THIS){
-			parseNonPrimitiveReferenceOrArrayReference();
-		}
-		else{
-			parseError("Invalid Term - expecting ID, INT, BOOLEAN, or THIS but found "
-					+ token.kind);
-		}
+		parseTypeReferenceOrArrayReference();
 		switch(token.kind){
 		//	id = Expression
 		case ID:
@@ -392,7 +366,7 @@ public class Parser {
 	/*Expression ::=
 	 * (
 	 * 		unop Expression
-	 *		| Type_Reference_ArrayReference ( ( ArgumentList? ) )? 
+	 *		| NonPrimitiveReferenceOrArrayReference ( ( ArgumentList? ) )? 
 	 *		| '(' Expression ')'
 	 *		| num | true | false
 	 *		| new (id ( ( ) | [ Expression ] ) | int [ Expression ])
@@ -409,7 +383,7 @@ public class Parser {
 			parseExpression();
 			break;
 		//	NonPrimitiveReferenceOrArrayReference ( ( ArgumentList? ) )? 
-		case ID:case THIS:
+		case ID:	case THIS:
 			parseNonPrimitiveReferenceOrArrayReference();
 			if(token.kind == TokenKind.LEFTPAREN){
 				accept(TokenKind.LEFTPAREN);
