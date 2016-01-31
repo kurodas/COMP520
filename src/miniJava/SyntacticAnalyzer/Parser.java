@@ -83,7 +83,16 @@ public class Parser {
 	 *			( ; | '(' ParameterList? ')' '{' Statement* '}' )
 	 */
 	private void parseFieldOrNonVoidMethodDeclaration() {
-		parseTypeReferenceOrArrayReference();
+		if(token.kind == TokenKind.BOOLEAN || token.kind == TokenKind.INT){
+			parseBooleanIntOrIntArrayReference();
+		}
+		else if(token.kind == TokenKind.ID || token.kind == TokenKind.THIS){
+			parseNonPrimitiveReferenceOrArrayReference();
+		}
+		else{
+			parseError("Invalid Term - expecting ID, INT, BOOLEAN, or THIS but found "
+					+ token.kind);
+		}
 		accept(TokenKind.ID);
 		switch (token.kind) {
 		case SEMICOLON:
@@ -147,24 +156,24 @@ public class Parser {
 		| (this ( . id)*)	
 
 	 */
-	private void parseTypeReferenceOrArrayReference(){
+	private void parseNonPrimitiveReferenceOrArrayReference(){
 		switch(token.kind){
 		case ID:
-			innerCaseSwitchForIDCaseInParseTypeReferenceOrArrayReference();
+			innerCaseSwitchForIDCaseInParseNonPrimitiveReferenceOrArrayReference();
 			return;	
-		//	int ([ ])?
-		case INT:
-			accept(TokenKind.INT);
-			if (token.kind == TokenKind.LEFTSQUAREBRACKET) {
-				accept(TokenKind.LEFTSQUAREBRACKET);
-				accept(TokenKind.RIGHTSQUAREBRACKET);
-			}
-			return;
-			
-		//	boolean
-		case BOOLEAN:
-			accept(TokenKind.BOOLEAN);
-			return;
+		//	int ('[' ']')?
+//		case INT:
+//			accept(TokenKind.INT);
+//			if (token.kind == TokenKind.LEFTSQUAREBRACKET) {
+//				accept(TokenKind.LEFTSQUAREBRACKET);
+//				accept(TokenKind.RIGHTSQUAREBRACKET);
+//			}
+//			return;
+//			
+//		//	boolean
+//		case BOOLEAN:
+//			accept(TokenKind.BOOLEAN);
+//			return;
 			
 		//	(this ( . id)*)
 		case THIS: 	
@@ -187,7 +196,7 @@ public class Parser {
 	 *			| ( '.' id)* 
 	 *		) 
 	 */
-	private void innerCaseSwitchForIDCaseInParseTypeReferenceOrArrayReference(){
+	private void innerCaseSwitchForIDCaseInParseNonPrimitiveReferenceOrArrayReference(){
 		accept(TokenKind.ID);
 		switch(token.kind){
 		//	( '[' ( Expression ']'  | ']' ) )?
@@ -213,15 +222,53 @@ public class Parser {
 			return;
 		}
 	}
+	//	int ('[' ']')? | boolean
+	private void parseBooleanIntOrIntArrayReference(){
+		switch(token.kind){
+		//	int ('[' ']')?
+		case INT:
+			accept(TokenKind.INT);
+			if (token.kind == TokenKind.LEFTSQUAREBRACKET) {
+				accept(TokenKind.LEFTSQUAREBRACKET);
+				accept(TokenKind.RIGHTSQUAREBRACKET);
+			}
+			return;
+		//	boolean
+		case BOOLEAN:
+			accept(TokenKind.BOOLEAN);
+			return;
+		default:
+			parseError("Invalid Term - expecting INT or BOOLEAN but found "
+					+ token.kind);
+		}
+	}
 	
 	//ParameterList ::= Type_Reference_ArrayReference id ( ',' Type_Reference_ArrayReference id )*	
 	private void parseParameterList(){
-		parseTypeReferenceOrArrayReference();
+		if(token.kind == TokenKind.BOOLEAN || token.kind == TokenKind.INT){
+			parseBooleanIntOrIntArrayReference();
+		}
+		else if(token.kind == TokenKind.ID || token.kind == TokenKind.THIS){
+			parseNonPrimitiveReferenceOrArrayReference();
+		}
+		else{
+			parseError("Invalid Term - expecting ID, INT, BOOLEAN, or THIS but found "
+					+ token.kind);
+		}
 		accept(TokenKind.ID);
 		//	( , Type_Reference_ArrayReference id )*
 		while(token.kind == TokenKind.COMMA){
 			accept(TokenKind.COMMA);
-			parseTypeReferenceOrArrayReference();
+			if(token.kind == TokenKind.BOOLEAN || token.kind == TokenKind.INT){
+				parseBooleanIntOrIntArrayReference();
+			}
+			else if(token.kind == TokenKind.ID || token.kind == TokenKind.THIS){
+				parseNonPrimitiveReferenceOrArrayReference();
+			}
+			else{
+				parseError("Invalid Term - expecting ID, INT, BOOLEAN, or THIS but found "
+						+ token.kind);
+			}
 			accept(TokenKind.ID);
 		}
 		
@@ -306,7 +353,16 @@ public class Parser {
 	 * ;
 	 */
 	private void innerCaseSwitchForIDINTBOOLEANTHISCasesInParseStatement(){
-		parseTypeReferenceOrArrayReference();
+		if(token.kind == TokenKind.BOOLEAN || token.kind == TokenKind.INT){
+			parseBooleanIntOrIntArrayReference();
+		}
+		else if(token.kind == TokenKind.ID || token.kind == TokenKind.THIS){
+			parseNonPrimitiveReferenceOrArrayReference();
+		}
+		else{
+			parseError("Invalid Term - expecting ID, INT, BOOLEAN, or THIS but found "
+					+ token.kind);
+		}
 		switch(token.kind){
 		//	id = Expression
 		case ID:
@@ -352,9 +408,9 @@ public class Parser {
 			acceptIt();
 			parseExpression();
 			break;
-		//	Type_Reference_ArrayReference ( ( ArgumentList? ) )? 
-		case ID: case INT: case BOOLEAN: case THIS:
-			parseTypeReferenceOrArrayReference();
+		//	NonPrimitiveReferenceOrArrayReference ( ( ArgumentList? ) )? 
+		case ID:case THIS:
+			parseNonPrimitiveReferenceOrArrayReference();
 			if(token.kind == TokenKind.LEFTPAREN){
 				accept(TokenKind.LEFTPAREN);
 				if(token.kind != TokenKind.RIGHTPAREN){

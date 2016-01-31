@@ -14,7 +14,7 @@ class test {
 		if (bball)
 			return;
 		int haha = -5 - -5 + !bob;
-		int haha = this(5);
+		int haha = this(5)[5];
 	}
 
 	private boolean shutUpAndJam(int body, randomTypeID nobody, boolean sandwich) {
