@@ -78,8 +78,9 @@ public class Parser {
 		}
 	}
 	/*
+	 * FieldOrNonVoidMethodDeclaration ::=
 	 * Type_Reference_ArrayReference id  
-	 *			( ; | '(' ParameterList? ')' { Statement* } )
+	 *			( ; | '(' ParameterList? ')' '{' Statement* '}' )
 	 */
 	private void parseFieldOrNonVoidMethodDeclaration() {
 		parseTypeReferenceOrArrayReference();
@@ -108,7 +109,7 @@ public class Parser {
 		}
 	}
 	
-	//void id '(' ParameterList? ')' { Statement* } 
+	//VoidMethodDeclaration ::= void id '(' ParameterList? ')' { Statement* } 
 	private void parseVoidMethodDeclaration() {
 		accept(TokenKind.VOID);
 		accept(TokenKind.ID);
@@ -134,6 +135,17 @@ public class Parser {
 		if(token.kind == TokenKind.STATIC)
 			acceptIt();
 	}
+
+	// Reference ::= this ( '.' id) | id ( '.' id)
+	private void parseReference(){
+		if(token.kind == TokenKind.ID || token.kind == TokenKind.THIS){
+			acceptIt();
+			while(token.kind == TokenKind.DOT){
+				accept(TokenKind.DOT);
+				accept(TokenKind.ID);
+			}
+		}
+	}
 	/*
 	 * Type_Reference_ArrayReference ::= 
 		id 
@@ -141,7 +153,7 @@ public class Parser {
 			('[' (Expression ']' | ']' ) )?
 			| ( '.' id)* 
 		) 
-		| int ([ ])?	
+		| int ('[' ']')?	
 		| boolean	
 		| (this ( . id)*)	
 
@@ -213,7 +225,7 @@ public class Parser {
 		}
 	}
 	
-	//ParameterList ::= Type_Reference_ArrayReference id ( , Type_Reference_ArrayReference id )*	
+	//ParameterList ::= Type_Reference_ArrayReference id ( ',' Type_Reference_ArrayReference id )*	
 	private void parseParameterList(){
 		parseTypeReferenceOrArrayReference();
 		accept(TokenKind.ID);
@@ -335,10 +347,10 @@ public class Parser {
 	/*Expression ::=
 	 * (
 	 * 		unop Expression
-	 *		| Type_Reference_ArrayReference ( ( ArgumentList? ) )? 
+	 *		| Reference ( '(' ArgumentList? ')' )?
 	 *		| '(' Expression ')'
 	 *		| num | true | false
-	 *		| new (id ( ( ) | [ Expression ] ) | int [ Expression ])
+	 *		| new (id ( '(' ')' | '[' Expression ']' ) | int '[' Expression ']')
 	 * )
 	 * (binop Expression)*
 	 * 
@@ -351,9 +363,9 @@ public class Parser {
 			acceptIt();
 			parseExpression();
 			break;
-		//	Type_Reference_ArrayReference ( ( ArgumentList? ) )? 
-		case ID: case INT: case BOOLEAN: case THIS:
-			parseTypeReferenceOrArrayReference();
+		//	Reference ( ( ArgumentList? ) )? 
+		case ID: case THIS:
+			parseReference();
 			if(token.kind == TokenKind.LEFTPAREN){
 				accept(TokenKind.LEFTPAREN);
 				if(token.kind != TokenKind.RIGHTPAREN){
@@ -380,7 +392,7 @@ public class Parser {
 			innerCaseSwitchForNEWCaseInParseExpression();
 			break;
 		default:
-			parseError("Invalid Term - expecting LOGICALNEGATIVE, MINUSORARITHMETICNEGATIVE, ID, INT, BOOLEAN, THIS, LEFTPAREN, NUM, TRUE, FALSE, or NEW but found "
+			parseError("Invalid Term - expecting LOGICALNEGATIVE, MINUSORARITHMETICNEGATIVE, ID, THIS, LEFTPAREN, NUM, TRUE, FALSE, or NEW but found "
 					+ token.kind);
 		}
 		//	(binop Expression)*
