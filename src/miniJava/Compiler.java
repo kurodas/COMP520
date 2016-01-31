@@ -1,8 +1,8 @@
 package miniJava;
 
+import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.InputStream;
 
 import miniJava.SyntacticAnalyzer.Parser;
 import miniJava.SyntacticAnalyzer.Scanner;
@@ -14,17 +14,17 @@ public class Compiler {
 	 */
 	public static void main(String[] args) {
 
-		InputStream inputStream = null;
+		BufferedInputStream inputStream = null;
 		if (args.length == 0) {
 			System.out.println("Enter Expression");
-			inputStream = System.in;
+			inputStream = new BufferedInputStream(System.in);
 		}
 		else {
 			try {
 				String fileExtension = getFileExtension(args[0]);
 				if(fileExtension.equalsIgnoreCase("java")
 						|| fileExtension.equalsIgnoreCase("mjava")){
-					inputStream = new FileInputStream(args[0]);
+					inputStream = new BufferedInputStream(new FileInputStream(args[0]));
 				}
 				else
 					System.out.println("Input file is not of type java or mjava");
@@ -42,11 +42,11 @@ public class Compiler {
 		parser.parse();
 		System.out.print("Syntactic analysis complete:  ");
 		if (reporter.hasErrors()) {
-			System.out.println("INVALID arithmetic expression");
+			System.out.println("INVALID MiniJava");
 			System.exit(4);
 		}
 		else {
-			System.out.println("valid arithmetic expression");
+			System.out.println("valid MiniJava");
 			System.exit(0);
 		}
 	}

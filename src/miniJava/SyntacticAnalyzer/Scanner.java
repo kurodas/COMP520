@@ -1,18 +1,18 @@
 package miniJava.SyntacticAnalyzer;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 
 import miniJava.ErrorReporter;
 
 public class Scanner {
-	private InputStream inputStream;
+	private BufferedInputStream inputStream;
 	private ErrorReporter reporter;
 
 	private char currentChar;
 	private StringBuilder currentSpelling;
 	
-	public Scanner(InputStream inputStream, ErrorReporter reporter) {
+	public Scanner(BufferedInputStream inputStream, ErrorReporter reporter) {
 		this.inputStream = inputStream;
 		this.reporter = reporter;
 		// initialize scanner state
@@ -37,7 +37,7 @@ public class Scanner {
 
 				if (currentChar == '/' && !inCommentLine && !inCommentBlock) {
 					//Save point to restore in case this is not start of a comment
-					inputStream.mark(2);
+					inputStream.mark(100);
 					int c = inputStream.read(); 
 					char nextChar = (char) c;
 					if (nextChar == '/') {// Start of inline comment
@@ -62,15 +62,20 @@ public class Scanner {
 				// '*' may signal end of comment block
 				else if(inCommentBlock && currentChar == '*'){
 					//Check if next char is '/'
-					nextChar();
+					inputStream.mark(100);
+					int c = inputStream.read(); 
+					char nextChar = (char) c;
 					// End of comment block
-					if(currentChar == '/'){
+					if(nextChar == '/'){
 						inCommentBlock = false;
 						skipIt();
 					}
 					// Comment block continues
-					else
+					else{
+						// Make sure no '*' chars are skipped
+						inputStream.reset();
 						skipIt();
+					}
 				}
 				else
 					skipIt();
@@ -114,7 +119,7 @@ public class Scanner {
 				takeIt();
 			// Check for keywords
 			if (currentSpelling.toString().equals("class")) {
-				return TokenKind.RETURN;
+				return TokenKind.CLASS;
 			} else if (currentSpelling.toString().equals("void")) {
 				return TokenKind.VOID;
 			} else if (currentSpelling.toString().equals("public")) {
