@@ -135,17 +135,6 @@ public class Parser {
 		if(token.kind == TokenKind.STATIC)
 			acceptIt();
 	}
-
-	// Reference ::= this ( '.' id) | id ( '.' id)
-	private void parseReference(){
-		if(token.kind == TokenKind.ID || token.kind == TokenKind.THIS){
-			acceptIt();
-			while(token.kind == TokenKind.DOT){
-				accept(TokenKind.DOT);
-				accept(TokenKind.ID);
-			}
-		}
-	}
 	/*
 	 * Type_Reference_ArrayReference ::= 
 		id 
@@ -347,10 +336,10 @@ public class Parser {
 	/*Expression ::=
 	 * (
 	 * 		unop Expression
-	 *		| Reference ( '(' ArgumentList? ')' )?
+	 *		| Type_Reference_ArrayReference ( ( ArgumentList? ) )? 
 	 *		| '(' Expression ')'
 	 *		| num | true | false
-	 *		| new (id ( '(' ')' | '[' Expression ']' ) | int '[' Expression ']')
+	 *		| new (id ( ( ) | [ Expression ] ) | int [ Expression ])
 	 * )
 	 * (binop Expression)*
 	 * 
@@ -363,9 +352,9 @@ public class Parser {
 			acceptIt();
 			parseExpression();
 			break;
-		//	Reference ( ( ArgumentList? ) )? 
-		case ID: case THIS:
-			parseReference();
+		//	Type_Reference_ArrayReference ( ( ArgumentList? ) )? 
+		case ID: case INT: case BOOLEAN: case THIS:
+			parseTypeReferenceOrArrayReference();
 			if(token.kind == TokenKind.LEFTPAREN){
 				accept(TokenKind.LEFTPAREN);
 				if(token.kind != TokenKind.RIGHTPAREN){
@@ -392,7 +381,7 @@ public class Parser {
 			innerCaseSwitchForNEWCaseInParseExpression();
 			break;
 		default:
-			parseError("Invalid Term - expecting LOGICALNEGATIVE, MINUSORARITHMETICNEGATIVE, ID, THIS, LEFTPAREN, NUM, TRUE, FALSE, or NEW but found "
+			parseError("Invalid Term - expecting LOGICALNEGATIVE, MINUSORARITHMETICNEGATIVE, ID, INT, BOOLEAN, THIS, LEFTPAREN, NUM, TRUE, FALSE, or NEW but found "
 					+ token.kind);
 		}
 		//	(binop Expression)*
