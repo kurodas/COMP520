@@ -22,12 +22,15 @@ public class Compiler {
 		else {
 			try {
 				String fileExtension = getFileExtension(args[0]);
-				if(fileExtension.equalsIgnoreCase("java")
-						|| fileExtension.equalsIgnoreCase("mjava")){
-					inputStream = new BufferedInputStream(new FileInputStream(args[0]));
+				if (fileExtension.equalsIgnoreCase("java")
+						|| fileExtension.equalsIgnoreCase("mjava")) {
+					inputStream = new BufferedInputStream(new FileInputStream(
+							args[0]));
+				} else {
+					System.out
+							.println("Input file is not of type java or mjava");
+					System.exit(1);
 				}
-				else
-					System.out.println("Input file is not of type java or mjava");
 			} catch (FileNotFoundException e) {
 				System.out.println("Input file " + args[0] + " not found");
 				System.exit(1);

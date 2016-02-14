@@ -18,6 +18,65 @@ public class Scanner {
 		// initialize scanner state
 		readChar();
 	}
+	
+	private void takeIt() {
+		currentSpelling.append(currentChar);
+		nextChar();
+	}
+
+	private void skipIt() {
+		nextChar();
+	}
+
+	private boolean isDigit(char c) {
+		return (c >= '0') && (c <= '9');
+	}
+
+	private boolean isAlpha(char c) {
+		return ((c >= 'a') && (c <= 'z') || (c >= 'A') && (c <= 'Z'));
+	}
+
+	private boolean isOperator(char c) {
+		return (c == '+' || c == '-' || c == '*' || c == '/' || c == '='
+				|| c == '<' || c == '>' || c == '&' || c == '!' || c == '|');
+	}
+
+	private void scanError(String m) {
+		reporter.reportError("Scan Error:  " + m);
+	}
+
+	private final static char eolUnix = '\n';
+	private final static char eolWindows = '\r';
+	private final static char eot = '\4';
+
+	/**
+	 * advance to next char in inputstream detect end of line or end of file and
+	 * substitute '$' as distinguished eot terminal
+	 */
+	private void nextChar() {
+		if (currentChar != eot)
+			readChar();
+	}
+
+	private void readChar() {
+		try {
+			int c = inputStream.read();
+			currentChar = (char) c;
+			// Standardize newline chars
+			if (currentChar == eolUnix || currentChar == eolWindows) {
+				currentChar = '\n';
+			}
+			// Substitute eot for eot or -1
+			else if (c == -1 || c == eot) {
+				currentChar = eot;
+//			} else if (currentChar == '$') {
+//				scanError("Illegal character '$' in input");
+			}
+		} catch (IOException e) {
+			scanError("I/O Exception!");
+			currentChar = '$';
+		}
+	}
 
 	/**
 	 * skip whitespace and scan next token
@@ -32,9 +91,9 @@ public class Scanner {
 		Skip: try {
 			while (currentChar == ' ' || currentChar == '\t'
 					|| currentChar == '\n' || currentChar == '/'
+//					|| currentChar == -1 || currentChar == eot //|| currentChar == '$'
 					|| inCommentLine || inCommentBlock) {
 				// Look ahead one character to determine if start of comment
-
 				if (currentChar == '/' && !inCommentLine && !inCommentBlock) {
 					//Save point to restore in case this is not start of a comment
 					inputStream.mark(100);
@@ -76,6 +135,14 @@ public class Scanner {
 						inputStream.reset();
 						skipIt();
 					}
+				}
+				else if(inCommentBlock && 
+						(currentChar == -1 || currentChar == eot)){
+					scanError("Unterminated block comment");
+					return new Token(TokenKind.ERROR, "-1");
+				}
+				else if(currentChar == -1 || currentChar == eot){
+					return new Token(TokenKind.EOT, "eot");
 				}
 				else
 					skipIt();
@@ -195,7 +262,7 @@ public class Scanner {
 				takeIt();
 			return (TokenKind.NUM);
 
-		case '$':
+		case eot:
 			return (TokenKind.EOT);
 
 	    case '+':  case '-':  case '*': case '/':  case '=':  
@@ -244,62 +311,5 @@ public class Scanner {
 		}
 	}
 
-	private void takeIt() {
-		currentSpelling.append(currentChar);
-		nextChar();
-	}
-
-	private void skipIt() {
-		nextChar();
-	}
-
-	private boolean isDigit(char c) {
-		return (c >= '0') && (c <= '9');
-	}
-
-	private boolean isAlpha(char c) {
-		return ((c >= 'a') && (c <= 'z') || (c >= 'A') && (c <= 'Z'));
-	}
-
-	private boolean isOperator(char c) {
-		return (c == '+' || c == '-' || c == '*' || c == '/' || c == '='
-				|| c == '<' || c == '>' || c == '&' || c == '!' || c == '|');
-	}
-
-	private void scanError(String m) {
-		reporter.reportError("Scan Error:  " + m);
-	}
-
-	private final static char eolUnix = '\n';
-	private final static char eolWindows = '\r';
-	private final static char eot = '\4';
-
-	/**
-	 * advance to next char in inputstream detect end of line or end of file and
-	 * substitute '$' as distinguished eot terminal
-	 */
-	private void nextChar() {
-		if (currentChar != '$')
-			readChar();
-	}
-
-	private void readChar() {
-		try {
-			int c = inputStream.read();
-			currentChar = (char) c;
-			// Standardize newline chars
-			if (currentChar == eolUnix || currentChar == eolWindows) {
-				currentChar = '\n';
-			}
-			// Substitute '$' for eot or -1
-			else if (c == -1 || c == eot) {
-				currentChar = '$';
-			} else if (currentChar == '$') {
-				scanError("Illegal character '$' in input");
-			}
-		} catch (IOException e) {
-			scanError("I/O Exception!");
-			currentChar = '$';
-		}
-	}
+	
 }
