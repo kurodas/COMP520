@@ -108,6 +108,17 @@ public class Parser {
 					+ token.kind);
 		}
 	}
+	//Visibility ::= (public | private)?
+	private void parseVisibility(){
+		if (token.kind == TokenKind.PUBLIC || token.kind == TokenKind.PRIVATE)
+			acceptIt();
+	}
+	
+	//Access ::= static?
+	private void parseAccess(){
+		if(token.kind == TokenKind.STATIC)
+			acceptIt();
+	}
 	
 	//VoidMethodDeclaration ::= void id '(' ParameterList? ')' { Statement* } 
 	private void parseVoidMethodDeclaration() {
@@ -124,17 +135,7 @@ public class Parser {
 		return;
 	}
 	
-	//Visibility ::= (public | private)?
-	private void parseVisibility(){
-		if (token.kind == TokenKind.PUBLIC || token.kind == TokenKind.PRIVATE)
-			acceptIt();
-	}
-	
-	//Access ::= static?
-	private void parseAccess(){
-		if(token.kind == TokenKind.STATIC)
-			acceptIt();
-	}
+
 	/*
 	 * Type_Reference_ArrayReference ::= 
 	 * BooleanIntOrIntArrayReference
