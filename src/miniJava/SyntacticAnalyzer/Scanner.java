@@ -261,50 +261,79 @@ public class Scanner {
 			while (isDigit(currentChar))
 				takeIt();
 			return (TokenKind.NUM);
-
 		case eot:
-			return (TokenKind.EOT);
-
-	    case '+':  case '-':  case '*': case '/':  case '=':  
-	    case '<':  case '>':  case '&': case '!':  case '|':
 			takeIt();
-			while (isOperator(currentChar))
-				takeIt();
-			if (currentSpelling.toString().equals("+")) {
-				return TokenKind.PLUS;
-			} else if (currentSpelling.toString().equals("-")) {
-				return TokenKind.MINUSORARITHMETICNEGATIVE;
-			} else if (currentSpelling.toString().equals("*")) {
-				return TokenKind.TIMES;
-			} else if (currentSpelling.toString().equals("/")) {
-				return TokenKind.DIVIDE;
-			} else if (currentSpelling.toString().equals("<")) {
-				return TokenKind.LESSTHAN;
-			} else if (currentSpelling.toString().equals(">")) {
-				return TokenKind.GREATERTHAN;
-			} else if (currentSpelling.toString().equals("<=")) {
-				return TokenKind.LESSTHANEQUAL;
-			} else if (currentSpelling.toString().equals(">=")) {
-				return TokenKind.GREATERTHANEQUAL;
-			} else if (currentSpelling.toString().equals("==")) {
-				return TokenKind.LOGICALEQUAL;
-			} else if (currentSpelling.toString().equals("!=")) {
-				return TokenKind.NOTEQUAL;
-			} else if (currentSpelling.toString().equals("=")) {
-				return TokenKind.ASSIGNMENTEQUAL;
-			} else if (currentSpelling.toString().equals("&&")) {
-				return TokenKind.AND;
-			} else if (currentSpelling.toString().equals("||")) {
-				return TokenKind.OR;
-			} else if (currentSpelling.toString().equals("!")) {
-				return TokenKind.LOGICALNEGATIVE;
-			}
-			//Return error if the string of operators is invalid
-			else{
-				scanError("Unrecognized operator '" + currentSpelling.toString() + "' in input");
+			return (TokenKind.EOT);
+	    case '+': 
+	    	takeIt();
+	    	return TokenKind.PLUS;
+	    case '-':  
+	    	takeIt();
+	    	return TokenKind.MINUSORARITHMETICNEGATIVE;
+	    case '*':
+	    	takeIt();
+	    	return TokenKind.TIMES;
+	    case '/':    
+	    	takeIt();
+	    	return TokenKind.DIVIDE;
+	    case '!':
+	    	takeIt();
+	    	if(currentChar == '='){
+	    		takeIt();
+	    		return TokenKind.NOTEQUAL;
+	    	}
+	    	else{
+	    		return TokenKind.LOGICALNEGATIVE;
+	    	}
+	    case '<':
+	    	takeIt();
+	    	if(currentChar == '='){
+	    		takeIt();
+	    		return TokenKind.LESSTHANEQUAL;
+	    	}
+	    	else{
+	    		return TokenKind.LESSTHAN;
+	    	}
+	    case '>':  
+			takeIt();
+	    	if(currentChar == '='){
+	    		takeIt();
+	    		return TokenKind.GREATERTHANEQUAL;
+	    	}
+	    	else{
+	    		return TokenKind.GREATERTHAN;
+	    	}
+	    case '&':
+	    	takeIt();
+	    	if(currentChar == '&'){
+	    		takeIt();
+	    		return TokenKind.AND;
+	    	}
+	    	else{
+	    		takeIt();
+	    		scanError("Unrecognized operator '" + currentSpelling.toString() + "' in input");
 				return (TokenKind.ERROR);
-			}
-			 
+	    	}
+	    case '|':
+	    	takeIt();
+	    	if(currentChar == '|'){
+	    		takeIt();
+	    		return TokenKind.OR;
+	    	}
+	    	else{
+	    		takeIt();
+	    		scanError("Unrecognized operator '" + currentSpelling.toString() + "' in input");
+				return (TokenKind.ERROR);
+	    	}
+	    case '=':
+	    	takeIt();
+	    	if(currentChar == '='){
+	    		takeIt();
+	    		return TokenKind.LOGICALEQUAL;
+	    	}
+	    	else{
+				return TokenKind.ASSIGNMENTEQUAL;
+	    	}
 		default:
 			scanError("Unrecognized character '" + currentChar + "' in input");
 			return (TokenKind.ERROR);

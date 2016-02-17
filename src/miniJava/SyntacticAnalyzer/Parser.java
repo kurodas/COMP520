@@ -123,7 +123,6 @@ public class Parser {
 		accept(TokenKind.VOID);
 		accept(TokenKind.ID);
 		accept(TokenKind.LEFTPAREN);
-		System.out.print(token.kind);
 		if(token.kind != TokenKind.RIGHTPAREN)
 			parseParameterList();
 		accept(TokenKind.RIGHTPAREN);
@@ -195,17 +194,7 @@ public class Parser {
 	}
 	
 	/*
-	 * 	Statement ::=
-	 * 		{ Statement* }
-	 * 		| Type_Reference_ArrayReference 
-	 * 		(
-	 *			id = Expression
-	 *			| = Expression 
-	 *			| (ArgumentList?) 
-	 *		) ;
-	 *		| return Expression? ;
-	 *		| if ( Expression ) Statement (else Statement)? 
-	 *		| while ( Expression ) Statement
+	 * 
 	 */
 	private void parseStatement(){
 		switch(token.kind){
@@ -248,7 +237,9 @@ public class Parser {
 				return;
 			}
 			//id ( . id)* ( = Expression | '('ArgumentList?')' ) ;
-			else if(token.kind == TokenKind.DOT){
+			else if(token.kind == TokenKind.DOT 
+					|| token.kind == TokenKind.ASSIGNMENTEQUAL
+					|| token.kind == TokenKind.LEFTPAREN){
 				while(token.kind == TokenKind.DOT){
 					acceptIt();
 					accept(TokenKind.ID);
@@ -275,7 +266,7 @@ public class Parser {
 							+ token.kind);
 				}
 			} else {
-				parseError("Invalid Term - expecting LEFTSQUAREBRACKET, ID, or DOT but found "
+				parseError("Invalid Term - expecting LEFTSQUAREBRACKET, ID, DOT, or ASSIGNMENTEQUAL but found "
 						+ token.kind);
 			}
 
@@ -445,7 +436,7 @@ public class Parser {
 				else if(token.kind == TokenKind.LEFTSQUAREBRACKET){
 					acceptIt();
 					parseExpression();
-					accept(TokenKind.LEFTSQUAREBRACKET);
+					accept(TokenKind.RIGHTSQUAREBRACKET);
 					break;
 				}
 				else{
