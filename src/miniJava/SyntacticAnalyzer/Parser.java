@@ -56,15 +56,15 @@ public class Parser {
 	/*
 	 * FieldOrMethodDeclaration = Visibility Access
 			(
-			FieldOrNonVoidMethodDeclaration
-			| VoidMethodDeclaration 
+			Type  id  ( ; | (ParameterList?) { Statement* } ) 
+			| void id (ParameterList?) { Statement* } 
 			)
 	 */
 	private void parseFieldOrMethodDeclaration(){
 		parseVisibility();
 		parseAccess();
 		switch (token.kind) {
-		case ID: case INT: case BOOLEAN: case THIS:{
+		case ID: case INT: case BOOLEAN:{
 			parseFieldOrNonVoidMethodDeclaration();
 			return;
 		}
@@ -73,23 +73,31 @@ public class Parser {
 			return;
 		}
 		default:
-			parseError("Invalid Term - expecting ID or VOID but found "
+			parseError("Invalid Term - expecting ID, INT, BOOLEAN, or VOID but found "
 					+ token.kind);
 		}
 	}
+	//Visibility ::= (public | private)?
+	private void parseVisibility(){
+		if (token.kind == TokenKind.PUBLIC || token.kind == TokenKind.PRIVATE)
+			acceptIt();
+	}
+	
+	//Access ::= static?
+	private void parseAccess(){
+		if(token.kind == TokenKind.STATIC)
+			acceptIt();
+	}
 	/*
-	 * FieldOrNonVoidMethodDeclaration ::=
-	 * Type_Reference_ArrayReference id  
-	 *			( ; | '(' ParameterList? ')' '{' Statement* '}' )
+	 * Type  id  ( ; | '(' ParameterList? ')' '{' Statement* '}' ) 
 	 */
 	private void parseFieldOrNonVoidMethodDeclaration() {
-		parseTypeReferenceOrArrayReference();
+		parseType();
 		accept(TokenKind.ID);
 		switch (token.kind) {
 		case SEMICOLON:
 			accept(TokenKind.SEMICOLON);
 			return;
-			
 		//	'(' ParameterList? ')' '{' Statement* '}' 
 		case LEFTPAREN: {
 			accept(TokenKind.LEFTPAREN);
@@ -108,24 +116,15 @@ public class Parser {
 					+ token.kind);
 		}
 	}
-	//Visibility ::= (public | private)?
-	private void parseVisibility(){
-		if (token.kind == TokenKind.PUBLIC || token.kind == TokenKind.PRIVATE)
-			acceptIt();
-	}
-	
-	//Access ::= static?
-	private void parseAccess(){
-		if(token.kind == TokenKind.STATIC)
-			acceptIt();
-	}
+
 	
 	//VoidMethodDeclaration ::= void id '(' ParameterList? ')' { Statement* } 
 	private void parseVoidMethodDeclaration() {
 		accept(TokenKind.VOID);
 		accept(TokenKind.ID);
 		accept(TokenKind.LEFTPAREN);
-		if(token.kind != TokenKind.RIGHTPAREN);
+		System.out.print(token.kind);
+		if(token.kind != TokenKind.RIGHTPAREN)
 			parseParameterList();
 		accept(TokenKind.RIGHTPAREN);
 		accept(TokenKind.LEFTBRACKET);
@@ -135,127 +134,54 @@ public class Parser {
 		return;
 	}
 	
-
-	/*
-	 * Type_Reference_ArrayReference ::= 
-	 * BooleanIntOrIntArrayReference
-	 * | NonPrimitiveReferenceOrArrayReference
-	 */
-	private void parseTypeReferenceOrArrayReference(){
-		if(token.kind == TokenKind.BOOLEAN || token.kind == TokenKind.INT){
-			parseBooleanIntOrIntArrayReference();
-		}
-		else if(token.kind == TokenKind.ID || token.kind == TokenKind.THIS){
-			parseNonPrimitiveReferenceOrArrayReference();
-		}
-		else{
-			parseError("Invalid Term - expecting ID, INT, BOOLEAN, or THIS but found "
-					+ token.kind);
-		}
-	}
-	/*
-	 * NonPrimitiveReferenceOrArrayReference ::= 
-		id 
-		( 
-			('[' (Expression ']' | ']' ) )?
-			| ( '.' id)* 
-		) 
-		| (this ( . id)*)	
-
-	 */
-	private void parseNonPrimitiveReferenceOrArrayReference(){
+	private void parseType(){
 		switch(token.kind){
-		case ID:
-			innerCaseSwitchForIDCaseInParseNonPrimitiveReferenceOrArrayReference();
-			return;	
-		case THIS: 	
-			accept(TokenKind.THIS);
-			while(token.kind == TokenKind.DOT){
-				accept(TokenKind.DOT);
-				accept(TokenKind.ID);
-			}
-			return;
-		default:
-			parseError("Invalid Term - expecting ID, INT, BOOLEAN, or THIS but found "
-					+ token.kind);
-		}
-
-
-	}
-	/*
-	 * 		id 
-	 *		( 
-	 *			( '[' ( Expression ']'  | ']' ) )?
-	 *			| ( '.' id)* 
-	 *		) 
-	 */
-	private void innerCaseSwitchForIDCaseInParseNonPrimitiveReferenceOrArrayReference(){
-		accept(TokenKind.ID);
-		switch(token.kind){
-		//	( '[' ( Expression ']'  | ']' ) )?
-		case LEFTSQUAREBRACKET:
-			accept(TokenKind.LEFTSQUAREBRACKET);
-			if(token.kind == TokenKind.RIGHTSQUAREBRACKET){
-				accept(TokenKind.RIGHTSQUAREBRACKET);
-			}
-			else{
-				parseExpression();
+		case INT: case ID:
+			acceptIt();
+			if(token.kind == TokenKind.LEFTSQUAREBRACKET){
+				acceptIt();
 				accept(TokenKind.RIGHTSQUAREBRACKET);
 			}
 			return;
-			
-		//	( '.' id)* 
-		case DOT:
-			while(token.kind == TokenKind.DOT){
-				accept(TokenKind.DOT);
-				accept(TokenKind.ID);
-			}
-			return;
-		default:
-			return;
-		}
-	}
-	//	int ('[' ']')? | boolean
-	private void parseBooleanIntOrIntArrayReference(){
-		switch(token.kind){
-		//	int ('[' ']')?
-		case INT:
-			accept(TokenKind.INT);
-			if (token.kind == TokenKind.LEFTSQUAREBRACKET) {
-				accept(TokenKind.LEFTSQUAREBRACKET);
-				accept(TokenKind.RIGHTSQUAREBRACKET);
-			}
-			return;
-		//	boolean
 		case BOOLEAN:
-			accept(TokenKind.BOOLEAN);
+			acceptIt();
 			return;
 		default:
-			parseError("Invalid Term - expecting INT or BOOLEAN but found "
+			parseError("Invalid Term - expecting INT, ID, or BOOLEAN but found "
 					+ token.kind);
 		}
 	}
 	
-	//ParameterList ::= Type_Reference_ArrayReference id ( ',' Type_Reference_ArrayReference id )*	
-	private void parseParameterList(){
-		parseTypeReferenceOrArrayReference();
+	private void parseReference(){
+		switch(token.kind){
+		case THIS: case ID:
+			acceptIt();
+			while(token.kind == TokenKind.DOT){
+				acceptIt();
+				accept(TokenKind.ID);
+			}
+		default:
+			parseError("Invalid Term - expecting THIS or ID but found "
+					+ token.kind);
+		}
+	}
+	
+	private void parseArrayReference(){
 		accept(TokenKind.ID);
-		//	( , Type_Reference_ArrayReference id )*
+		accept(TokenKind.LEFTSQUAREBRACKET);
+		parseExpression();
+		accept(TokenKind.RIGHTSQUAREBRACKET);
+	}
+		
+	private void parseParameterList(){
+		parseType();
+		accept(TokenKind.ID);
+		//	( , Type id )*
 		while(token.kind == TokenKind.COMMA){
 			accept(TokenKind.COMMA);
-			if(token.kind == TokenKind.BOOLEAN || token.kind == TokenKind.INT){
-				parseBooleanIntOrIntArrayReference();
-			}
-			else if(token.kind == TokenKind.ID || token.kind == TokenKind.THIS){
-				parseNonPrimitiveReferenceOrArrayReference();
-			}
-			else{
-				parseError("Invalid Term - expecting ID, INT, BOOLEAN, or THIS but found "
-						+ token.kind);
-			}
+			parseType();
 			accept(TokenKind.ID);
 		}
-		
 	}
 	
 	//ArgumentList ::= Expression (',' Expression)*
@@ -291,9 +217,113 @@ public class Parser {
 			}
 			accept(TokenKind.RIGHTBRACKET);
 			return;
-		case ID: case INT: case BOOLEAN: case THIS:
-			innerCaseSwitchForIDINTBOOLEANTHISCasesInParseStatement();
+		case ID: 
+			acceptIt();
+			if(token.kind == TokenKind.LEFTSQUAREBRACKET){
+				acceptIt();
+				// id[] id = Expression ;
+				if(token.kind == TokenKind.RIGHTSQUAREBRACKET){
+					acceptIt();
+					accept(TokenKind.ID);
+					accept(TokenKind.ASSIGNMENTEQUAL);
+					parseExpression();
+					accept(TokenKind.SEMICOLON);
+					return;
+				}
+				else{ //id [ Expression ] = Expression ;
+					parseExpression();
+					accept(TokenKind.RIGHTSQUAREBRACKET);
+					accept(TokenKind.ASSIGNMENTEQUAL);
+					parseExpression();
+					accept(TokenKind.SEMICOLON);
+					return;
+				}
+			}
+			//id id = Expression ;
+			else if(token.kind == TokenKind.ID){
+				acceptIt();
+				accept(TokenKind.ASSIGNMENTEQUAL);
+				parseExpression();
+				accept(TokenKind.SEMICOLON);
+				return;
+			}
+			//id ( . id)* ( = Expression | '('ArgumentList?')' ) ;
+			else if(token.kind == TokenKind.DOT){
+				while(token.kind == TokenKind.DOT){
+					acceptIt();
+					accept(TokenKind.ID);
+				}
+				// id ( . id)* = Expression ;
+				if(token.kind == TokenKind.ASSIGNMENTEQUAL){
+					acceptIt();
+					parseExpression();
+					accept(TokenKind.SEMICOLON);
+					return;
+				}
+				// id ( . id)* '(' ArgumentList? ')' ;
+				else if(token.kind == TokenKind.LEFTPAREN){
+					acceptIt();
+					if(token.kind != TokenKind.RIGHTPAREN){
+						parseArgumentList();
+					}
+					accept(TokenKind.RIGHTPAREN);
+					accept(TokenKind.SEMICOLON);
+					return;
+				}
+				else{
+					parseError("Invalid Term - expecting ASSIGNMENTEQUAL or LEFTPAREN but found "
+							+ token.kind);
+				}
+			} else {
+				parseError("Invalid Term - expecting LEFTSQUAREBRACKET, ID, or DOT but found "
+						+ token.kind);
+			}
+
+		case INT: //int ([])? id = Expression ;
+			acceptIt();
+			if(token.kind == TokenKind.LEFTSQUAREBRACKET){
+				acceptIt();
+				accept(TokenKind.RIGHTSQUAREBRACKET);
+			}
+			accept(TokenKind.ID);
+			accept(TokenKind.ASSIGNMENTEQUAL);
+			parseExpression();
+			accept(TokenKind.SEMICOLON);
 			return;
+		case BOOLEAN: //boolean id = Expression ; 
+			acceptIt();
+			accept(TokenKind.ID);
+			accept(TokenKind.ASSIGNMENTEQUAL);
+			parseExpression();
+			accept(TokenKind.SEMICOLON);
+			return;
+		case THIS: // this ( . id )* ( = Expression | '('ArgumentList?')' ) ;
+			acceptIt();
+			while(token.kind == TokenKind.DOT){
+				acceptIt();
+				accept(TokenKind.ID);
+			}
+			//this ( . id)* '=' Expression ;
+			if(token.kind == TokenKind.ASSIGNMENTEQUAL){
+				acceptIt();
+				parseExpression();
+				accept(TokenKind.SEMICOLON);
+				return;
+			}
+			//this ( . id)* '(' ArgumentList? ')' ;
+			else if(token.kind == TokenKind.LEFTPAREN){
+				acceptIt();
+				if(token.kind != TokenKind.RIGHTPAREN){
+					parseArgumentList();
+				}
+				accept(TokenKind.RIGHTPAREN);
+				accept(TokenKind.SEMICOLON);
+				return;
+			}
+			else{
+				parseError("Invalid Term - expecting LEFTPAREN or ASSIGNMENTEQUAL but found "
+						+ token.kind);
+			}
 		//	return Expression? ;
 		case RETURN:
 			accept(TokenKind.RETURN);
@@ -323,48 +353,13 @@ public class Parser {
 			parseStatement();
 			return;
 		default:
-			parseError("Invalid Term - expecting LEFTBRACKET, ID, RETURN, IF, or WHILE but found " + token.kind);
+			parseError("Invalid Term - expecting LEFTBRACKET, ID, INT, BOOLEAN, THIS, RETURN, IF, or WHILE but found " + token.kind);
 		}
 		
 	}
-	/*
-	 * Type_Reference_ArrayReference 
-	 * 	(
-	 *		id = Expression
-	 *		| = Expression 
-	 *		| (ArgumentList?) 
-	 *	) 
-	 * ;
-	 */
-	private void innerCaseSwitchForIDINTBOOLEANTHISCasesInParseStatement(){
-		parseTypeReferenceOrArrayReference();
-		switch(token.kind){
-		//	id = Expression
-		case ID:
-			accept(TokenKind.ID);
-			accept(TokenKind.ASSIGNMENTEQUAL);
-			parseExpression();
-			break;
-		//	= Expression 
-		case ASSIGNMENTEQUAL:
-			accept(TokenKind.ASSIGNMENTEQUAL);
-			parseExpression();
-			break;
-		//	'(' ArgumentList? ')' 
-		case LEFTPAREN:
-			accept(TokenKind.LEFTPAREN);
-			if(token.kind != TokenKind.RIGHTPAREN){
-				parseArgumentList();
-			}
-			accept(TokenKind.RIGHTPAREN);
-			break;
-		default:
-			parseError("Invalid Term - expecting ID, ASSIGNMENTEQUAL, or LEFTPAREN but found " + token.kind);
-		}
-		accept(TokenKind.SEMICOLON);
-	}
 	
 	/*Expression ::=
+	 * (unop)*
 	 * (
 	 * 		unop Expression
 	 *		| NonPrimitiveReferenceOrArrayReference ( ( ArgumentList? ) )? 
@@ -376,16 +371,45 @@ public class Parser {
 	 * 
 	 */
 	private void parseExpression(){
-		switch(token.kind){
-		//	unop Expression
-		case LOGICALNEGATIVE:
-		case MINUSORARITHMETICNEGATIVE:
+		//( unop )*
+		while(isUnop(token)){
 			acceptIt();
-			parseExpression();
-			break;
-		//	NonPrimitiveReferenceOrArrayReference ( ( ArgumentList? ) )? 
-		case ID:	case THIS:
-			parseNonPrimitiveReferenceOrArrayReference();
+		}
+		switch(token.kind){
+		case ID:
+			acceptIt();
+			// id '[' Expression ']'
+			if(token.kind == TokenKind.LEFTSQUAREBRACKET){
+				acceptIt();
+				parseExpression();
+				accept(TokenKind.RIGHTSQUAREBRACKET);
+				break;
+			}
+			// id ( . id)* ( '(' ArgumentList? ')' )? 
+			else if(token.kind == TokenKind.LEFTPAREN || token.kind == TokenKind.DOT){
+				while(token.kind == TokenKind.DOT){
+					acceptIt();
+					accept(TokenKind.ID);
+				}
+				if(token.kind == TokenKind.LEFTPAREN){
+					accept(TokenKind.LEFTPAREN);
+					if(token.kind != TokenKind.RIGHTPAREN){
+						parseArgumentList();
+					}
+					accept(TokenKind.RIGHTPAREN);
+				}
+				break;
+			}
+			else{
+				break;
+			}
+		//this ( . id )* ( '(' ArgumentList? ')' )?
+		case THIS:
+			acceptIt();
+			while(token.kind == TokenKind.DOT){
+				acceptIt();
+				accept(TokenKind.ID);
+			}
 			if(token.kind == TokenKind.LEFTPAREN){
 				accept(TokenKind.LEFTPAREN);
 				if(token.kind != TokenKind.RIGHTPAREN){
@@ -408,11 +432,40 @@ public class Parser {
 			break;
 		//	new (id ( ( ) | [ Expression ] ) | int [ Expression ])
 		case NEW:
-			accept(TokenKind.NEW);
-			innerCaseSwitchForNEWCaseInParseExpression();
+			acceptIt();
+			if(token.kind == TokenKind.ID){
+				//new id '(' ')'
+				acceptIt();
+				if(token.kind == TokenKind.LEFTPAREN){
+					acceptIt();
+					accept(TokenKind.RIGHTPAREN);
+					break;
+				}
+				//new id '[' Expression ']'
+				else if(token.kind == TokenKind.LEFTSQUAREBRACKET){
+					acceptIt();
+					parseExpression();
+					accept(TokenKind.LEFTSQUAREBRACKET);
+					break;
+				}
+				else{
+					parseError("Invalid Term - expecting LEFTSQUAREBRACKET or LEFTPAREN but found " + token.kind);
+				}
+					
+			}
+			//new int '[' Expression ']'
+			else if(token.kind == TokenKind.INT){
+				acceptIt();
+				accept(TokenKind.LEFTSQUAREBRACKET);
+				parseExpression();
+				accept(TokenKind.RIGHTSQUAREBRACKET);
+			}
+			else{
+				parseError("Invalid Term - expecting ID or INT but found " + token.kind);
+			}
 			break;
 		default:
-			parseError("Invalid Term - expecting LOGICALNEGATIVE, MINUSORARITHMETICNEGATIVE, ID, INT, BOOLEAN, THIS, LEFTPAREN, NUM, TRUE, FALSE, or NEW but found "
+			parseError("Invalid Term - expecting ID, THIS, LEFTPAREN, NUM, TRUE, FALSE, or NEW but found "
 					+ token.kind);
 		}
 		//	(binop Expression)*
@@ -421,44 +474,6 @@ public class Parser {
 			parseExpression();
 		}
 		
-	}
-	/*	id 
-	 * 		( 
-	 * 		'(' ')' 
-	 * 		| '[' Expression ']' 
-	 * 		) 
-	 * 	| int '[' Expression ']'
-	 *  
-	 */
-	private void innerCaseSwitchForNEWCaseInParseExpression(){
-		switch(token.kind){
-		case ID:
-			accept(TokenKind.ID);
-			//	'(' ')'
-			if(token.kind == TokenKind.LEFTPAREN){
-				accept(TokenKind.LEFTPAREN);
-				accept(TokenKind.RIGHTPAREN);
-			}
-			//	'[' Expression ']'
-			else if(token.kind == TokenKind.LEFTSQUAREBRACKET){
-				accept(TokenKind.LEFTSQUAREBRACKET);
-				parseExpression();
-				accept(TokenKind.RIGHTSQUAREBRACKET);
-			}
-			else{
-				parseError("Invalid Term - expecting LEFTPAREN or LEFTSQUAREBRACKET but found " + token.kind);
-			}
-			break;
-		//	int '[' Expression ']'
-		case INT:
-			accept(TokenKind.INT);
-			accept(TokenKind.LEFTSQUAREBRACKET);
-			parseExpression();
-			accept(TokenKind.RIGHTSQUAREBRACKET);
-			break;
-		default:
-			parseError("Invalid Term - expecting ID or INT but found " + token.kind);
-		}
 	}
 	
 	private boolean isBinop(Token t){
