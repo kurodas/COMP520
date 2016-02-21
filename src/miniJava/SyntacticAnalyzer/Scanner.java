@@ -269,7 +269,14 @@ public class Scanner {
 	    	return TokenKind.PLUS;
 	    case '-':  
 	    	takeIt();
-	    	return TokenKind.MINUSORARITHMETICNEGATIVE;
+	    	if(currentChar != '-'){
+	    		return TokenKind.MINUSORARITHMETICNEGATIVE;
+	    	}
+	    	else{
+	    		takeIt();
+	    		scanError("Unrecognized operator '" + currentSpelling.toString() + "' in input");
+				return (TokenKind.ERROR);
+	    	}
 	    case '*':
 	    	takeIt();
 	    	return TokenKind.TIMES;

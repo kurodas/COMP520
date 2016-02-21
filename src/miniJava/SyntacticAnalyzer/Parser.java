@@ -1,6 +1,47 @@
 package miniJava.SyntacticAnalyzer;
 
 import miniJava.ErrorReporter;
+import miniJava.AbstractSyntaxTrees.AST;
+import miniJava.AbstractSyntaxTrees.ArrayType;
+import miniJava.AbstractSyntaxTrees.AssignStmt;
+import miniJava.AbstractSyntaxTrees.BaseType;
+import miniJava.AbstractSyntaxTrees.BlockStmt;
+import miniJava.AbstractSyntaxTrees.BooleanLiteral;
+import miniJava.AbstractSyntaxTrees.CallExpr;
+import miniJava.AbstractSyntaxTrees.CallStmt;
+import miniJava.AbstractSyntaxTrees.ClassDecl;
+import miniJava.AbstractSyntaxTrees.ClassDeclList;
+import miniJava.AbstractSyntaxTrees.ClassType;
+import miniJava.AbstractSyntaxTrees.ExprList;
+import miniJava.AbstractSyntaxTrees.Expression;
+import miniJava.AbstractSyntaxTrees.FieldDecl;
+import miniJava.AbstractSyntaxTrees.FieldDeclList;
+import miniJava.AbstractSyntaxTrees.IdRef;
+import miniJava.AbstractSyntaxTrees.Identifier;
+import miniJava.AbstractSyntaxTrees.IfStmt;
+import miniJava.AbstractSyntaxTrees.IndexedRef;
+import miniJava.AbstractSyntaxTrees.IntLiteral;
+import miniJava.AbstractSyntaxTrees.IxAssignStmt;
+import miniJava.AbstractSyntaxTrees.LiteralExpr;
+import miniJava.AbstractSyntaxTrees.MethodDecl;
+import miniJava.AbstractSyntaxTrees.MethodDeclList;
+import miniJava.AbstractSyntaxTrees.NewArrayExpr;
+import miniJava.AbstractSyntaxTrees.NewObjectExpr;
+import miniJava.AbstractSyntaxTrees.Package;
+import miniJava.AbstractSyntaxTrees.ParameterDecl;
+import miniJava.AbstractSyntaxTrees.ParameterDeclList;
+import miniJava.AbstractSyntaxTrees.QualifiedRef;
+import miniJava.AbstractSyntaxTrees.RefExpr;
+import miniJava.AbstractSyntaxTrees.Reference;
+import miniJava.AbstractSyntaxTrees.ReturnStmt;
+import miniJava.AbstractSyntaxTrees.Statement;
+import miniJava.AbstractSyntaxTrees.StatementList;
+import miniJava.AbstractSyntaxTrees.ThisRef;
+import miniJava.AbstractSyntaxTrees.Type;
+import miniJava.AbstractSyntaxTrees.TypeKind;
+import miniJava.AbstractSyntaxTrees.VarDecl;
+import miniJava.AbstractSyntaxTrees.VarDeclStmt;
+import miniJava.AbstractSyntaxTrees.WhileStmt;
 
 public class Parser {
 
@@ -26,32 +67,40 @@ public class Parser {
 	/**
 	 * start parse
 	 */
-	public void parse() {
+	public AST parse() {
 		token = scanner.scan();
-		try {
-			parseProgram();
-		} catch (SyntaxError e) {
-
-		}
+		AST p = parseProgram();
+		return p;
 	}
 	
 	//Program ::= (ClassDeclaration)* eot
-	private void parseProgram() {
+	private Package parseProgram() {
+		ClassDeclList classDeclList = new ClassDeclList();
 		while (token.kind != TokenKind.EOT) {
-			parseClassDeclaration();
+			classDeclList.add(parseClassDeclaration());
 		}
 		accept(TokenKind.EOT);
+		return new Package(classDeclList, null);
 	}
 	
 	//ClassDeclaration ::= class id { ( FieldOrMethodDeclaration )* } 
-	private void parseClassDeclaration() {
+	private ClassDecl parseClassDeclaration() {
 		accept(TokenKind.CLASS);
-		accept(TokenKind.ID);
+		String className = accept(TokenKind.ID);
 		accept(TokenKind.LEFTBRACKET);
+		FieldDeclList fieldDeclList = new FieldDeclList();
+		MethodDeclList methodDeclList = new MethodDeclList();
 		while (token.kind != TokenKind.RIGHTBRACKET) {
-			parseFieldOrMethodDeclaration();
+			Object fieldOrMethodDecl = parseFieldOrMethodDeclaration();
+			if(fieldOrMethodDecl instanceof FieldDecl){
+				fieldDeclList.add((FieldDecl) fieldOrMethodDecl);
+			}
+			else{
+				methodDeclList.add((MethodDecl) fieldOrMethodDecl);
+			}
 		}
 		accept(TokenKind.RIGHTBRACKET);
+		return new ClassDecl(className, fieldDeclList, methodDeclList,null);
 	}
 	/*
 	 * FieldOrMethodDeclaration = Visibility Access
@@ -60,206 +109,273 @@ public class Parser {
 			| void id (ParameterList?) { Statement* } 
 			)
 	 */
-	private void parseFieldOrMethodDeclaration(){
-		parseVisibility();
-		parseAccess();
+	private Object parseFieldOrMethodDeclaration(){
+		boolean isPrivate = parseVisibility();
+		boolean isStatic = parseAccess();
 		switch (token.kind) {
 		case ID: case INT: case BOOLEAN:{
-			parseFieldOrNonVoidMethodDeclaration();
-			return;
+			return parseFieldOrNonVoidMethodDeclaration(isPrivate, isStatic);
 		}
 		case VOID: {
-			parseVoidMethodDeclaration();
-			return;
+			return parseVoidMethodDeclaration(isPrivate, isStatic);
 		}
 		default:
 			parseError("Invalid Term - expecting ID, INT, BOOLEAN, or VOID but found "
 					+ token.kind);
+			return null;
 		}
 	}
 	//Visibility ::= (public | private)?
-	private void parseVisibility(){
-		if (token.kind == TokenKind.PUBLIC || token.kind == TokenKind.PRIVATE)
-			acceptIt();
+	private boolean parseVisibility(){
+		boolean isPrivate;
+		if(token.kind == TokenKind.PRIVATE)
+			isPrivate = true;
+		else
+			isPrivate = false;
+		if (token.kind == TokenKind.PUBLIC || token.kind == TokenKind.PRIVATE){
+				acceptIt();
+		}
+		return isPrivate;
 	}
 	
 	//Access ::= static?
-	private void parseAccess(){
-		if(token.kind == TokenKind.STATIC)
+	private boolean parseAccess(){
+		boolean isStatic = false;
+		if(token.kind == TokenKind.STATIC){
 			acceptIt();
+			isStatic = true;
+		}
+		return isStatic;
 	}
 	/*
 	 * Type  id  ( ; | '(' ParameterList? ')' '{' Statement* '}' ) 
 	 */
-	private void parseFieldOrNonVoidMethodDeclaration() {
-		parseType();
-		accept(TokenKind.ID);
+	private Object parseFieldOrNonVoidMethodDeclaration(boolean isPrivate, boolean isStatic) {
+		Type type = parseType();
+		String name = accept(TokenKind.ID);
 		switch (token.kind) {
 		case SEMICOLON:
 			accept(TokenKind.SEMICOLON);
-			return;
+			return new FieldDecl(isPrivate, isStatic, type, name, null);
 		//	'(' ParameterList? ')' '{' Statement* '}' 
 		case LEFTPAREN: {
 			accept(TokenKind.LEFTPAREN);
+			ParameterDeclList parameterDeclList = null;
 			if (token.kind != TokenKind.RIGHTPAREN) {
-				parseParameterList();
+				parameterDeclList = parseParameterList();
 			}
 			accept(TokenKind.RIGHTPAREN);
 			accept(TokenKind.LEFTBRACKET);
+			StatementList statementList = new StatementList();
 			while (token.kind != TokenKind.RIGHTBRACKET)
-				parseStatement();
+				statementList.add(parseStatement());
 			accept(TokenKind.RIGHTBRACKET);
-			return;
+			return new MethodDecl(new FieldDecl(isPrivate, isStatic, type, name, null), 
+					parameterDeclList, statementList, null);
 		}
 		default:
 			parseError("Invalid Term - expecting SEMICOLON or LEFTPAREN but found "
 					+ token.kind);
+			return null;
 		}
 	}
 
 	
 	//VoidMethodDeclaration ::= void id '(' ParameterList? ')' { Statement* } 
-	private void parseVoidMethodDeclaration() {
+	private MethodDecl parseVoidMethodDeclaration(boolean isPrivate, boolean isStatic) {
 		accept(TokenKind.VOID);
-		accept(TokenKind.ID);
+		String methodName = accept(TokenKind.ID);
 		accept(TokenKind.LEFTPAREN);
+		ParameterDeclList parameterDeclList = null;
 		if(token.kind != TokenKind.RIGHTPAREN)
-			parseParameterList();
+			parameterDeclList = parseParameterList();
 		accept(TokenKind.RIGHTPAREN);
 		accept(TokenKind.LEFTBRACKET);
+		StatementList statementList = new StatementList();
 		while (token.kind != TokenKind.RIGHTBRACKET)
-			parseStatement();
+			statementList.add(parseStatement());
 		accept(TokenKind.RIGHTBRACKET);
-		return;
+		return new MethodDecl(new FieldDecl(isPrivate, isStatic, new BaseType(TypeKind.VOID, null), methodName, null), parameterDeclList, statementList, null);
 	}
 	
-	private void parseType(){
+	private Type parseType(){
 		switch(token.kind){
-		case INT: case ID:
+		case INT:
 			acceptIt();
 			if(token.kind == TokenKind.LEFTSQUAREBRACKET){
 				acceptIt();
 				accept(TokenKind.RIGHTSQUAREBRACKET);
+				return new ArrayType(new BaseType(TypeKind.INT, null), null);
 			}
-			return;
+			return new BaseType(TypeKind.INT, null);
+		case ID:
+			Identifier className = new Identifier(token);
+			acceptIt();
+			if(token.kind == TokenKind.LEFTSQUAREBRACKET){
+				acceptIt();
+				accept(TokenKind.RIGHTSQUAREBRACKET);
+				return new ArrayType(new ClassType(className, null), null);
+			}
+			return new ClassType(className, null);
 		case BOOLEAN:
 			acceptIt();
-			return;
+			return new BaseType(TypeKind.INT, null);
 		default:
 			parseError("Invalid Term - expecting INT, ID, or BOOLEAN but found "
 					+ token.kind);
+			return null;
 		}
 	}
 	
-	private void parseReference(){
-		switch(token.kind){
-		case THIS: case ID:
-			acceptIt();
-			while(token.kind == TokenKind.DOT){
-				acceptIt();
-				accept(TokenKind.ID);
-			}
-		default:
-			parseError("Invalid Term - expecting THIS or ID but found "
-					+ token.kind);
-		}
-	}
-	
-	private void parseArrayReference(){
-		accept(TokenKind.ID);
-		accept(TokenKind.LEFTSQUAREBRACKET);
-		parseExpression();
-		accept(TokenKind.RIGHTSQUAREBRACKET);
-	}
+//	private Reference parseReference(){
+//		switch(token.kind){
+//		case THIS: case ID:
+//			acceptIt();
+//			while(token.kind == TokenKind.DOT){
+//				acceptIt();
+//				accept(TokenKind.ID);
+//			}
+//		default:
+//			parseError("Invalid Term - expecting THIS or ID but found "
+//					+ token.kind);
+//		}
+//	}
+//	
+//	private IndexedRef parseArrayReference(){
+//		accept(TokenKind.ID);
+//		accept(TokenKind.LEFTSQUAREBRACKET);
+//		parseExpression();
+//		accept(TokenKind.RIGHTSQUAREBRACKET);
+//	}
 		
-	private void parseParameterList(){
-		parseType();
-		accept(TokenKind.ID);
+	private ParameterDeclList parseParameterList(){
+		ParameterDeclList parameterDeclList = new ParameterDeclList();
+		Type parameterType = parseType();
+		String parameterName = accept(TokenKind.ID);
+		parameterDeclList.add(new ParameterDecl(parameterType, parameterName, null));
 		//	( , Type id )*
 		while(token.kind == TokenKind.COMMA){
 			accept(TokenKind.COMMA);
-			parseType();
-			accept(TokenKind.ID);
+			parameterType = parseType();
+			parameterName = accept(TokenKind.ID);
+			parameterDeclList.add(new ParameterDecl(parameterType, parameterName, null));
 		}
+		return parameterDeclList;
 	}
 	
 	//ArgumentList ::= Expression (',' Expression)*
-	private void parseArgumentList(){
-		parseExpression();
+	private ExprList parseArgumentList(){
+		ExprList argumentList = new ExprList();
+		argumentList.add(parseExpression());
 		//	(',' Expression)*
 		while(token.kind == TokenKind.COMMA){
 			accept(TokenKind.COMMA);
-			parseExpression();
+			argumentList.add(parseExpression());
 		}
+		return argumentList;
 	}
 	
 	/*
 	 * 
 	 */
-	private void parseStatement(){
+	private Statement parseStatement(){
+		String name;
+		Type type;
+		Expression expr;
+		Identifier id;
 		switch(token.kind){
 		//	{ Statement* }
 		case LEFTBRACKET:
 			accept(TokenKind.LEFTBRACKET);
+			StatementList statementList = new StatementList();
 			while(token.kind != TokenKind.RIGHTBRACKET){
-				parseStatement();
+				statementList.add(parseStatement());
 			}
 			accept(TokenKind.RIGHTBRACKET);
-			return;
+			return new BlockStmt(statementList, null);
 		case ID: 
+			ClassType classType = new ClassType(new Identifier(token), null);
+			IdRef idRef = new IdRef(new Identifier(token), null);
 			acceptIt();
 			if(token.kind == TokenKind.LEFTSQUAREBRACKET){
 				acceptIt();
 				// id[] id = Expression ;
 				if(token.kind == TokenKind.RIGHTSQUAREBRACKET){
 					acceptIt();
-					accept(TokenKind.ID);
+					String variableName = accept(TokenKind.ID);
 					accept(TokenKind.ASSIGNMENTEQUAL);
-					parseExpression();
+					Expression expression = parseExpression();
 					accept(TokenKind.SEMICOLON);
-					return;
+					return new VarDeclStmt(new VarDecl(new ArrayType(classType, null),variableName, null), expression, null);
 				}
 				else{ //id [ Expression ] = Expression ;
-					parseExpression();
+					Expression arrayIndexExpression = parseExpression();
 					accept(TokenKind.RIGHTSQUAREBRACKET);
 					accept(TokenKind.ASSIGNMENTEQUAL);
-					parseExpression();
+					Expression assigningExpression = parseExpression();
 					accept(TokenKind.SEMICOLON);
-					return;
+					return new IxAssignStmt(
+							new IndexedRef(idRef, arrayIndexExpression, null), 
+								assigningExpression, null);
 				}
 			}
 			//id id = Expression ;
 			else if(token.kind == TokenKind.ID){
-				acceptIt();
+				String variableName = acceptIt();
 				accept(TokenKind.ASSIGNMENTEQUAL);
-				parseExpression();
+				Expression expression = parseExpression();
 				accept(TokenKind.SEMICOLON);
-				return;
+				return new VarDeclStmt(new VarDecl(classType, variableName,null),expression,null);
 			}
 			//id ( . id)* ( = Expression | '('ArgumentList?')' ) ;
 			else if(token.kind == TokenKind.DOT 
 					|| token.kind == TokenKind.ASSIGNMENTEQUAL
 					|| token.kind == TokenKind.LEFTPAREN){
-				while(token.kind == TokenKind.DOT){
+				QualifiedRef qRef = null;
+				id = null;
+				if (token.kind == TokenKind.DOT) {
 					acceptIt();
+					id = new Identifier(token);
 					accept(TokenKind.ID);
+					qRef = new QualifiedRef(idRef,id,null);
+					while (token.kind == TokenKind.DOT) {
+						acceptIt();
+						id = new Identifier(token);
+						accept(TokenKind.ID);
+						qRef = new QualifiedRef(qRef, id, null);
+					}
 				}
 				// id ( . id)* = Expression ;
 				if(token.kind == TokenKind.ASSIGNMENTEQUAL){
 					acceptIt();
-					parseExpression();
+					Expression assignmentExpression = parseExpression();
 					accept(TokenKind.SEMICOLON);
-					return;
+					//If there were qualified references, use qRef
+					if(qRef != null){
+						return new AssignStmt(qRef, assignmentExpression, null);
+					}
+					//Else use idRef
+					else{
+						return new AssignStmt(idRef, assignmentExpression, null);
+					}
 				}
 				// id ( . id)* '(' ArgumentList? ')' ;
 				else if(token.kind == TokenKind.LEFTPAREN){
 					acceptIt();
+					ExprList argList = null;
 					if(token.kind != TokenKind.RIGHTPAREN){
-						parseArgumentList();
+						argList = parseArgumentList();
 					}
 					accept(TokenKind.RIGHTPAREN);
 					accept(TokenKind.SEMICOLON);
-					return;
+					//If there were qualified references, use qRef
+					if(qRef != null){
+						return new CallStmt(qRef, argList, null);
+					}
+					//Else use idRef
+					else{
+						return new CallStmt(idRef, argList, null);
+					}
 				}
 				else{
 					parseError("Invalid Term - expecting ASSIGNMENTEQUAL or LEFTPAREN but found "
@@ -272,44 +388,73 @@ public class Parser {
 
 		case INT: //int ([])? id = Expression ;
 			acceptIt();
+			type = new BaseType(TypeKind.INT,null);
 			if(token.kind == TokenKind.LEFTSQUAREBRACKET){
 				acceptIt();
 				accept(TokenKind.RIGHTSQUAREBRACKET);
+				type = new ArrayType(type, null);
 			}
-			accept(TokenKind.ID);
+			name = accept(TokenKind.ID);
 			accept(TokenKind.ASSIGNMENTEQUAL);
-			parseExpression();
+			expr = parseExpression();
 			accept(TokenKind.SEMICOLON);
-			return;
+			return new VarDeclStmt(new VarDecl(type, name, null), expr, null);
 		case BOOLEAN: //boolean id = Expression ; 
 			acceptIt();
-			accept(TokenKind.ID);
+			type = new BaseType(TypeKind.BOOLEAN,null);
+			name = accept(TokenKind.ID);
 			accept(TokenKind.ASSIGNMENTEQUAL);
-			parseExpression();
+			expr = parseExpression();
 			accept(TokenKind.SEMICOLON);
-			return;
+			return new VarDeclStmt(new VarDecl(type, name, null), expr, null);
 		case THIS: // this ( . id )* ( = Expression | '('ArgumentList?')' ) ;
 			acceptIt();
-			while(token.kind == TokenKind.DOT){
+			Reference thisRef = new ThisRef(null);
+			QualifiedRef qRef = null;
+			id = null;
+			if (token.kind == TokenKind.DOT) {
 				acceptIt();
+				id = new Identifier(token);
 				accept(TokenKind.ID);
+				qRef = new QualifiedRef(thisRef,id,null);
+				while (token.kind == TokenKind.DOT) {
+					acceptIt();
+					id = new Identifier(token);
+					accept(TokenKind.ID);
+					qRef = new QualifiedRef(qRef, id, null);
+				}
 			}
 			//this ( . id)* '=' Expression ;
 			if(token.kind == TokenKind.ASSIGNMENTEQUAL){
 				acceptIt();
-				parseExpression();
+				expr = parseExpression();
 				accept(TokenKind.SEMICOLON);
-				return;
+				//If there were qualified references, use qRef
+				if(qRef != null){
+					return new AssignStmt(qRef,expr,null);
+				}
+				//Else use idRef
+				else{
+					return new AssignStmt(thisRef,expr, null);
+				}
 			}
 			//this ( . id)* '(' ArgumentList? ')' ;
 			else if(token.kind == TokenKind.LEFTPAREN){
 				acceptIt();
+				ExprList argList = null;
 				if(token.kind != TokenKind.RIGHTPAREN){
-					parseArgumentList();
+					argList = parseArgumentList();
 				}
 				accept(TokenKind.RIGHTPAREN);
 				accept(TokenKind.SEMICOLON);
-				return;
+				//If there were qualified references, use qRef
+				if(qRef != null){
+					return new CallStmt(qRef, argList, null);
+				}
+				//Else use thisRef
+				else{
+					return new CallStmt(thisRef, argList, null);
+				}
 			}
 			else{
 				parseError("Invalid Term - expecting LEFTPAREN or ASSIGNMENTEQUAL but found "
@@ -318,33 +463,36 @@ public class Parser {
 		//	return Expression? ;
 		case RETURN:
 			accept(TokenKind.RETURN);
+			expr = null;
 			if(token.kind != TokenKind.SEMICOLON){
-				parseExpression();
+				expr = parseExpression();
 			}
 			accept(TokenKind.SEMICOLON);
-			return;
+			return new ReturnStmt(expr, null);
 		//	if '(' Expression ')' Statement (else Statement)?
 		case IF:
 			accept(TokenKind.IF);
 			accept(TokenKind.LEFTPAREN);
-			parseExpression();
+			Expression ifCondition = parseExpression();
 			accept(TokenKind.RIGHTPAREN);
-			parseStatement();
+			Statement ifStmt = parseStatement();
+			Statement elseStmt = null;
 			if(token.kind == TokenKind.ELSE){
 				accept(TokenKind.ELSE);
-				parseStatement();
+				elseStmt = parseStatement();
 			}
-			return;
+			return new IfStmt(ifCondition, ifStmt, elseStmt, null);
 		//	while '(' Expression ')' Statement
 		case WHILE:
 			accept(TokenKind.WHILE);
 			accept(TokenKind.LEFTPAREN);
-			parseExpression();
+			Expression whileCondition = parseExpression();
 			accept(TokenKind.RIGHTPAREN);
-			parseStatement();
-			return;
+			Statement loopContent = parseStatement();
+			return new WhileStmt(whileCondition, loopContent,null);
 		default:
 			parseError("Invalid Term - expecting LEFTBRACKET, ID, INT, BOOLEAN, THIS, RETURN, IF, or WHILE but found " + token.kind);
+			return null;
 		}
 		
 	}
@@ -361,33 +509,64 @@ public class Parser {
 	 * (binop Expression)*
 	 * 
 	 */
-	private void parseExpression(){
+	private Expression parseExpression(){
 		//( unop )*
 		while(isUnop(token)){
 			acceptIt();
 		}
+		Expression expr;
 		switch(token.kind){
 		case ID:
+			IdRef idRef = new IdRef(new Identifier(token), null);
 			acceptIt();
 			// id '[' Expression ']'
 			if(token.kind == TokenKind.LEFTSQUAREBRACKET){
 				acceptIt();
-				parseExpression();
+				Expression indexExpression = parseExpression();
 				accept(TokenKind.RIGHTSQUAREBRACKET);
+				expr = new RefExpr(new IndexedRef(idRef, indexExpression, null), null);
 				break;
 			}
 			// id ( . id)* ( '(' ArgumentList? ')' )? 
 			else if(token.kind == TokenKind.LEFTPAREN || token.kind == TokenKind.DOT){
-				while(token.kind == TokenKind.DOT){
+				QualifiedRef qRef = null;
+				Identifier id = null;
+				if (token.kind == TokenKind.DOT) {
 					acceptIt();
+					id = new Identifier(token);
 					accept(TokenKind.ID);
+					qRef = new QualifiedRef(idRef,id,null);
+					while (token.kind == TokenKind.DOT) {
+						acceptIt();
+						id = new Identifier(token);
+						accept(TokenKind.ID);
+						qRef = new QualifiedRef(qRef, id, null);
+					}
 				}
-				if(token.kind == TokenKind.LEFTPAREN){
+				ExprList argList = null;
+				if (token.kind == TokenKind.LEFTPAREN) {
 					accept(TokenKind.LEFTPAREN);
-					if(token.kind != TokenKind.RIGHTPAREN){
-						parseArgumentList();
+					if (token.kind != TokenKind.RIGHTPAREN) {
+						argList = parseArgumentList();
 					}
 					accept(TokenKind.RIGHTPAREN);
+					// If there were qualified references, use qRef
+					if (qRef != null) {
+						expr = new CallExpr(qRef, argList, null);
+					}
+					// Else use idRef
+					else {
+						expr = new CallExpr(idRef, argList, null);
+					}
+				}
+				// id ( . id)* 
+				//If there were qualified references, use qRef
+				else if(qRef != null){
+					expr = new RefExpr(qRef, null);
+				}
+				//Else use idRef
+				else{
+					expr = new RefExpr(idRef, null);
 				}
 				break;
 			}
@@ -397,28 +576,59 @@ public class Parser {
 		//this ( . id )* ( '(' ArgumentList? ')' )?
 		case THIS:
 			acceptIt();
-			while(token.kind == TokenKind.DOT){
+			Reference thisRef = new ThisRef(null);
+			QualifiedRef qRef = null;
+			Identifier id = null;
+			if (token.kind == TokenKind.DOT) {
 				acceptIt();
+				id = new Identifier(token);
 				accept(TokenKind.ID);
+				qRef = new QualifiedRef(thisRef,id,null);
+				while (token.kind == TokenKind.DOT) {
+					acceptIt();
+					id = new Identifier(token);
+					accept(TokenKind.ID);
+					qRef = new QualifiedRef(qRef, id, null);
+				}
 			}
+			ExprList argList = null;
 			if(token.kind == TokenKind.LEFTPAREN){
 				accept(TokenKind.LEFTPAREN);
 				if(token.kind != TokenKind.RIGHTPAREN){
-					parseArgumentList();
+					argList = parseArgumentList();
 				}
 				accept(TokenKind.RIGHTPAREN);
+				// If there were qualified references, use qRef
+				if (qRef != null) {
+					expr = new CallExpr(qRef, argList, null);
+				}
+				// Else use idRef
+				else {
+					expr = new CallExpr(thisRef, argList, null);
+				}
+			}// If there were qualified references, use qRef
+			else if(qRef != null){
+				expr = new RefExpr(qRef, null);
+			}
+			//Else use thisRef
+			else{
+				expr = new RefExpr(thisRef, null);
 			}
 			break;
 		//	'(' Expression ')'
 		case LEFTPAREN:
 			accept(TokenKind.LEFTPAREN);
-			parseExpression();
+			expr = parseExpression();
 			accept(TokenKind.RIGHTPAREN);
 			break;
 		//	num | true | false
 		case NUM:
+			expr = new LiteralExpr(new IntLiteral(token), null);
+			acceptIt();
+			break;
 		case TRUE:
 		case FALSE:
+			expr = new LiteralExpr(new BooleanLiteral(token),null);
 			acceptIt();
 			break;
 		//	new (id ( ( ) | [ Expression ] ) | int [ Expression ])
@@ -426,17 +636,21 @@ public class Parser {
 			acceptIt();
 			if(token.kind == TokenKind.ID){
 				//new id '(' ')'
+				Identifier classId = new Identifier(token);
+				ClassType classType = new ClassType(classId, null);
 				acceptIt();
 				if(token.kind == TokenKind.LEFTPAREN){
 					acceptIt();
 					accept(TokenKind.RIGHTPAREN);
+					expr = new NewObjectExpr(classType, null);
 					break;
 				}
 				//new id '[' Expression ']'
 				else if(token.kind == TokenKind.LEFTSQUAREBRACKET){
 					acceptIt();
-					parseExpression();
+					Expression arraySizeExpr = parseExpression();
 					accept(TokenKind.RIGHTSQUAREBRACKET);
+					expr = new NewArrayExpr(classType, arraySizeExpr, null);
 					break;
 				}
 				else{
@@ -448,8 +662,9 @@ public class Parser {
 			else if(token.kind == TokenKind.INT){
 				acceptIt();
 				accept(TokenKind.LEFTSQUAREBRACKET);
-				parseExpression();
+				Expression arraySizeExpr = parseExpression();
 				accept(TokenKind.RIGHTSQUAREBRACKET);
+				expr = new NewArrayExpr(new BaseType(TypeKind.INT, null), arraySizeExpr, null);
 			}
 			else{
 				parseError("Invalid Term - expecting ID or INT but found " + token.kind);
@@ -490,8 +705,8 @@ public class Parser {
 	/**
 	 * accept current token and advance to next token
 	 */
-	private void acceptIt() throws SyntaxError {
-		accept(token.kind);
+	private String acceptIt() throws SyntaxError {
+		return accept(token.kind);
 	}
 
 	/**
@@ -499,15 +714,19 @@ public class Parser {
 	 * @param expectedToken
 	 * @throws SyntaxError  if match fails
 	 */
-	private void accept(TokenKind expectedTokenKind) throws SyntaxError {
+	private String accept(TokenKind expectedTokenKind) throws SyntaxError {
 		if (token.kind == expectedTokenKind) {
 			if (trace)
 				pTrace();
+			String tokenSpelling = token.spelling;
 			token = scanner.scan();
+			return tokenSpelling;
 		}
-		else
+		else{
 			parseError("expecting '" + expectedTokenKind +
 					"' but found '" + token.kind + "'");
+			return null;
+		}
 	}
 
 	/**
