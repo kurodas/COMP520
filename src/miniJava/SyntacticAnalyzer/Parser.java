@@ -5,6 +5,7 @@ import miniJava.AbstractSyntaxTrees.AST;
 import miniJava.AbstractSyntaxTrees.ArrayType;
 import miniJava.AbstractSyntaxTrees.AssignStmt;
 import miniJava.AbstractSyntaxTrees.BaseType;
+import miniJava.AbstractSyntaxTrees.BinaryExpr;
 import miniJava.AbstractSyntaxTrees.BlockStmt;
 import miniJava.AbstractSyntaxTrees.BooleanLiteral;
 import miniJava.AbstractSyntaxTrees.CallExpr;
@@ -27,6 +28,7 @@ import miniJava.AbstractSyntaxTrees.MethodDecl;
 import miniJava.AbstractSyntaxTrees.MethodDeclList;
 import miniJava.AbstractSyntaxTrees.NewArrayExpr;
 import miniJava.AbstractSyntaxTrees.NewObjectExpr;
+import miniJava.AbstractSyntaxTrees.Operator;
 import miniJava.AbstractSyntaxTrees.Package;
 import miniJava.AbstractSyntaxTrees.ParameterDecl;
 import miniJava.AbstractSyntaxTrees.ParameterDeclList;
@@ -39,6 +41,7 @@ import miniJava.AbstractSyntaxTrees.StatementList;
 import miniJava.AbstractSyntaxTrees.ThisRef;
 import miniJava.AbstractSyntaxTrees.Type;
 import miniJava.AbstractSyntaxTrees.TypeKind;
+import miniJava.AbstractSyntaxTrees.UnaryExpr;
 import miniJava.AbstractSyntaxTrees.VarDecl;
 import miniJava.AbstractSyntaxTrees.VarDeclStmt;
 import miniJava.AbstractSyntaxTrees.WhileStmt;
@@ -571,6 +574,7 @@ public class Parser {
 				break;
 			}
 			else{
+				parseError("Invalid Term - expecting LEFTSQUAREBRACKET, DOT, or LEFTPAREN but found " + token.kind);
 				break;
 			}
 		//this ( . id )* ( '(' ArgumentList? ')' )?
@@ -623,13 +627,9 @@ public class Parser {
 			break;
 		//	num | true | false
 		case NUM:
-			expr = new LiteralExpr(new IntLiteral(token), null);
-			acceptIt();
-			break;
 		case TRUE:
 		case FALSE:
-			expr = new LiteralExpr(new BooleanLiteral(token),null);
-			acceptIt();
+			expr = parseLiteralExpr();
 			break;
 		//	new (id ( ( ) | [ Expression ] ) | int [ Expression ])
 		case NEW:
@@ -675,11 +675,134 @@ public class Parser {
 					+ token.kind);
 		}
 		//	(binop Expression)*
+		Expression secondExpr = null;
 		while (isBinop(token)) {
 			acceptIt();
 			parseExpression();
 		}
-		
+	}
+	
+	/*
+	 * S ::= A$
+	 * A ::= B (|| B)*
+	 * B ::= C (&& C)*
+	 * C ::= D ((== | !=) D)*
+	 * D ::= E ((<= | < | > | >=) E)*
+	 * E ::= F ((+|-) F)*
+	 * F ::= G ((* | /) G)*
+	 * G ::= (- | !)* H
+	 * H ::= ( A ) | Terminal
+	 */
+	
+	private BinaryExpr parseBinaryExprA(){
+		BinaryExpr expr = parseBinaryExprB();
+		while(token.kind == TokenKind.OR){
+			Operator oper = new Operator(token);
+			acceptIt();
+			Expression secondExpr = parseBinaryExprB();
+			expr = new BinaryExpr(oper, expr, secondExpr, null);
+		}
+		return expr;
+	}
+	
+	private BinaryExpr parseBinaryExprB(){
+		BinaryExpr expr = parseBinaryExprC();
+		while(token.kind == TokenKind.AND){
+			Operator oper = new Operator(token);
+			acceptIt();
+			Expression secondExpr = parseBinaryExprC();
+			expr = new BinaryExpr(oper, expr, secondExpr, null);
+		}
+		return expr;
+	}
+	
+	private BinaryExpr parseBinaryExprC(){
+		BinaryExpr expr = parseBinaryExprD();
+		while (token.kind == TokenKind.LOGICALEQUAL
+				|| token.kind == TokenKind.NOTEQUAL) {
+			Operator oper = new Operator(token);
+			acceptIt();
+			Expression secondExpr = parseBinaryExprD();
+			expr = new BinaryExpr(oper, expr, secondExpr, null);
+		}
+		return expr;
+	}
+	private BinaryExpr parseBinaryExprD(){
+		BinaryExpr expr = parseBinaryExprE();
+		while (token.kind == TokenKind.LESSTHAN
+				|| token.kind == TokenKind.LESSTHANEQUAL
+				|| token.kind == TokenKind.GREATERTHAN
+				|| token.kind == TokenKind.GREATERTHANEQUAL) {
+			Operator oper = new Operator(token);
+			acceptIt();
+			Expression secondExpr = parseBinaryExprE();
+			expr = new BinaryExpr(oper, expr, secondExpr, null);
+		}
+		return expr;
+	}
+	private BinaryExpr parseBinaryExprE(){
+		BinaryExpr expr = parseBinaryExprF();
+		while (token.kind == TokenKind.PLUS
+				|| token.kind == TokenKind.MINUSORARITHMETICNEGATIVE) {
+			Operator oper = new Operator(token);
+			acceptIt();
+			Expression secondExpr = parseBinaryExprF();
+			expr = new BinaryExpr(oper, expr, secondExpr, null);
+		}
+		return expr;
+	}
+	private BinaryExpr parseBinaryExprF(){
+		Expression expr = parseUnaryExprG();
+		while (token.kind == TokenKind.TIMES
+				|| token.kind == TokenKind.DIVIDE) {
+			Operator oper = new Operator(token);
+			acceptIt();
+			Expression secondExpr = parseUnaryExprG();
+			expr = new BinaryExpr(oper, expr, secondExpr, null);
+		}
+		return (BinaryExpr) expr;
+	}
+	private UnaryExpr parseUnaryExprG(){
+		UnaryExpr expr = null;
+		while (token.kind == TokenKind.LOGICALNEGATIVE
+				|| token.kind == TokenKind.MINUSORARITHMETICNEGATIVE) {
+			Operator oper = new Operator(token);
+			acceptIt();
+			Expression innerExpr = parseH();
+			expr = new UnaryExpr(oper, innerExpr, null);
+		}
+		return expr;
+	}
+	private Expression parseH(){
+		Expression expr;
+		if(token.kind == TokenKind.LEFTPAREN){
+			acceptIt();
+			expr = parseBinaryExprA();
+			accept(TokenKind.RIGHTPAREN);
+		}
+		else{
+			expr = parseLiteralExpr();
+		}
+		return expr;
+	}
+	
+	private LiteralExpr parseLiteralExpr(){
+		LiteralExpr expr = null;
+		switch(token.kind){
+		case NUM:
+			expr = new LiteralExpr(new IntLiteral(token), null);
+			acceptIt();
+			break;
+		case TRUE:
+		case FALSE:
+			expr = new LiteralExpr(new BooleanLiteral(token),null);
+			acceptIt();
+			break;
+		default:
+			parseError("Invalid Term - expecting NUM, TRUE, or FALSE but found "
+					+ token.kind);
+		}
+		return expr;
 	}
 	
 	private boolean isBinop(Token t){
