@@ -269,11 +269,11 @@ public class Parser {
 	//ArgumentList ::= Expression (',' Expression)*
 	private ExprList parseArgumentList(){
 		ExprList argumentList = new ExprList();
-		argumentList.add(parseExpression());
+		argumentList.add(parseExprA());
 		//	(',' Expression)*
 		while(token.kind == TokenKind.COMMA){
 			accept(TokenKind.COMMA);
-			argumentList.add(parseExpression());
+			argumentList.add(parseExprA());
 		}
 		return argumentList;
 	}
@@ -307,15 +307,15 @@ public class Parser {
 					acceptIt();
 					String variableName = accept(TokenKind.ID);
 					accept(TokenKind.ASSIGNMENTEQUAL);
-					Expression expression = parseExpression();
+					Expression expression = parseExprA();
 					accept(TokenKind.SEMICOLON);
 					return new VarDeclStmt(new VarDecl(new ArrayType(classType, null),variableName, null), expression, null);
 				}
 				else{ //id [ Expression ] = Expression ;
-					Expression arrayIndexExpression = parseExpression();
+					Expression arrayIndexExpression = parseExprA();
 					accept(TokenKind.RIGHTSQUAREBRACKET);
 					accept(TokenKind.ASSIGNMENTEQUAL);
-					Expression assigningExpression = parseExpression();
+					Expression assigningExpression = parseExprA();
 					accept(TokenKind.SEMICOLON);
 					return new IxAssignStmt(
 							new IndexedRef(idRef, arrayIndexExpression, null), 
@@ -326,7 +326,7 @@ public class Parser {
 			else if(token.kind == TokenKind.ID){
 				String variableName = acceptIt();
 				accept(TokenKind.ASSIGNMENTEQUAL);
-				Expression expression = parseExpression();
+				Expression expression = parseExprA();
 				accept(TokenKind.SEMICOLON);
 				return new VarDeclStmt(new VarDecl(classType, variableName,null),expression,null);
 			}
@@ -351,7 +351,7 @@ public class Parser {
 				// id ( . id)* = Expression ;
 				if(token.kind == TokenKind.ASSIGNMENTEQUAL){
 					acceptIt();
-					Expression assignmentExpression = parseExpression();
+					Expression assignmentExpression = parseExprA();
 					accept(TokenKind.SEMICOLON);
 					//If there were qualified references, use qRef
 					if(qRef != null){
@@ -399,7 +399,7 @@ public class Parser {
 			}
 			name = accept(TokenKind.ID);
 			accept(TokenKind.ASSIGNMENTEQUAL);
-			expr = parseExpression();
+			expr = parseExprA();
 			accept(TokenKind.SEMICOLON);
 			return new VarDeclStmt(new VarDecl(type, name, null), expr, null);
 		case BOOLEAN: //boolean id = Expression ; 
@@ -407,7 +407,7 @@ public class Parser {
 			type = new BaseType(TypeKind.BOOLEAN,null);
 			name = accept(TokenKind.ID);
 			accept(TokenKind.ASSIGNMENTEQUAL);
-			expr = parseExpression();
+			expr = parseExprA();
 			accept(TokenKind.SEMICOLON);
 			return new VarDeclStmt(new VarDecl(type, name, null), expr, null);
 		case THIS: // this ( . id )* ( = Expression | '('ArgumentList?')' ) ;
@@ -430,7 +430,7 @@ public class Parser {
 			//this ( . id)* '=' Expression ;
 			if(token.kind == TokenKind.ASSIGNMENTEQUAL){
 				acceptIt();
-				expr = parseExpression();
+				expr = parseExprA();
 				accept(TokenKind.SEMICOLON);
 				//If there were qualified references, use qRef
 				if(qRef != null){
@@ -468,7 +468,7 @@ public class Parser {
 			accept(TokenKind.RETURN);
 			expr = null;
 			if(token.kind != TokenKind.SEMICOLON){
-				expr = parseExpression();
+				expr = parseExprA();
 			}
 			accept(TokenKind.SEMICOLON);
 			return new ReturnStmt(expr, null);
@@ -476,7 +476,7 @@ public class Parser {
 		case IF:
 			accept(TokenKind.IF);
 			accept(TokenKind.LEFTPAREN);
-			Expression ifCondition = parseExpression();
+			Expression ifCondition = parseExprA();
 			accept(TokenKind.RIGHTPAREN);
 			Statement ifStmt = parseStatement();
 			Statement elseStmt = null;
@@ -489,7 +489,7 @@ public class Parser {
 		case WHILE:
 			accept(TokenKind.WHILE);
 			accept(TokenKind.LEFTPAREN);
-			Expression whileCondition = parseExpression();
+			Expression whileCondition = parseExprA();
 			accept(TokenKind.RIGHTPAREN);
 			Statement loopContent = parseStatement();
 			return new WhileStmt(whileCondition, loopContent,null);
@@ -512,11 +512,116 @@ public class Parser {
 	 * (binop Expression)*
 	 * 
 	 */
-	private Expression parseExpression(){
-		//( unop )*
-		while(isUnop(token)){
+	
+	/*
+	 * S ::= A$
+	 * A ::= B (|| B)*
+	 * B ::= C (&& C)*
+	 * C ::= D ((== | !=) D)*
+	 * D ::= E ((<= | < | > | >=) E)*
+	 * E ::= F ((+|-) F)*
+	 * F ::= G ((* | /) G)*
+	 * G ::= (- | !)* H
+	 * H ::= ( A ) | I
+	 * I ::= All other expression forms
+	 */
+	private Expression parseExprA(){
+		Expression expr = parseExprB();
+		while(token.kind == TokenKind.OR){
+			Operator oper = new Operator(token);
 			acceptIt();
+			Expression secondExpr = parseExprB();
+			expr = new BinaryExpr(oper, expr, secondExpr, null);
 		}
+		return expr;
+	}
+	
+	private Expression parseExprB(){
+		Expression expr = parseExprC();
+		while(token.kind == TokenKind.AND){
+			Operator oper = new Operator(token);
+			acceptIt();
+			Expression secondExpr = parseExprC();
+			expr = new BinaryExpr(oper, expr, secondExpr, null);
+		}
+		return expr;
+	}
+	
+	private Expression parseExprC(){
+		Expression expr = parseExprD();
+		while (token.kind == TokenKind.LOGICALEQUAL
+				|| token.kind == TokenKind.NOTEQUAL) {
+			Operator oper = new Operator(token);
+			acceptIt();
+			Expression secondExpr = parseExprD();
+			expr = new BinaryExpr(oper, expr, secondExpr, null);
+		}
+		return expr;
+	}
+	private Expression parseExprD(){
+		Expression expr = parseExprE();
+		while (token.kind == TokenKind.LESSTHAN
+				|| token.kind == TokenKind.LESSTHANEQUAL
+				|| token.kind == TokenKind.GREATERTHAN
+				|| token.kind == TokenKind.GREATERTHANEQUAL) {
+			Operator oper = new Operator(token);
+			acceptIt();
+			Expression secondExpr = parseExprE();
+			expr = new BinaryExpr(oper, expr, secondExpr, null);
+		}
+		return expr;
+	}
+	private Expression parseExprE(){
+		Expression expr = parseExprF();
+		while (token.kind == TokenKind.PLUS
+				|| token.kind == TokenKind.MINUSORARITHMETICNEGATIVE) {
+			Operator oper = new Operator(token);
+			acceptIt();
+			Expression secondExpr = parseExprF();
+			expr = new BinaryExpr(oper, expr, secondExpr, null);
+		}
+		return expr;
+	}
+	private Expression parseExprF(){
+		Expression expr = parseUnaryExprG();
+		while (token.kind == TokenKind.TIMES
+				|| token.kind == TokenKind.DIVIDE) {
+			Operator oper = new Operator(token);
+			acceptIt();
+			Expression secondExpr = parseUnaryExprG();
+			expr = new BinaryExpr(oper, expr, secondExpr, null);
+		}
+		return expr;
+	}
+	private UnaryExpr parseUnaryExprG(){
+		UnaryExpr expr = null;
+		while (token.kind == TokenKind.LOGICALNEGATIVE
+				|| token.kind == TokenKind.MINUSORARITHMETICNEGATIVE) {
+			Operator oper = new Operator(token);
+			acceptIt();
+			Expression innerExpr = parseH();
+			expr = new UnaryExpr(oper, innerExpr, null);
+		}
+		return expr;
+	}
+	private Expression parseH(){
+		Expression expr;
+		if(token.kind == TokenKind.LEFTPAREN){
+			acceptIt();
+			expr = parseExprA();
+			accept(TokenKind.RIGHTPAREN);
+		}
+		else{
+			expr = parseExprI();
+		}
+		return expr;
+	}
+
+	private Expression parseExprI(){
+//		//( unop )*
+//		while(isUnop(token)){
+//			acceptIt();
+//		}
 		Expression expr;
 		switch(token.kind){
 		case ID:
@@ -525,7 +630,7 @@ public class Parser {
 			// id '[' Expression ']'
 			if(token.kind == TokenKind.LEFTSQUAREBRACKET){
 				acceptIt();
-				Expression indexExpression = parseExpression();
+				Expression indexExpression = parseExprA();
 				accept(TokenKind.RIGHTSQUAREBRACKET);
 				expr = new RefExpr(new IndexedRef(idRef, indexExpression, null), null);
 				break;
@@ -575,7 +680,8 @@ public class Parser {
 			}
 			else{
 				parseError("Invalid Term - expecting LEFTSQUAREBRACKET, DOT, or LEFTPAREN but found " + token.kind);
-				break;
+				//Never reached
+				expr = null;
 			}
 		//this ( . id )* ( '(' ArgumentList? ')' )?
 		case THIS:
@@ -619,12 +725,12 @@ public class Parser {
 				expr = new RefExpr(thisRef, null);
 			}
 			break;
-		//	'(' Expression ')'
-		case LEFTPAREN:
-			accept(TokenKind.LEFTPAREN);
-			expr = parseExpression();
-			accept(TokenKind.RIGHTPAREN);
-			break;
+//		//	'(' Expression ')'
+//		case LEFTPAREN:
+//			accept(TokenKind.LEFTPAREN);
+//			expr = parseExpression();
+//			accept(TokenKind.RIGHTPAREN);
+//			break;
 		//	num | true | false
 		case NUM:
 		case TRUE:
@@ -648,13 +754,15 @@ public class Parser {
 				//new id '[' Expression ']'
 				else if(token.kind == TokenKind.LEFTSQUAREBRACKET){
 					acceptIt();
-					Expression arraySizeExpr = parseExpression();
+					Expression arraySizeExpr = parseExprA();
 					accept(TokenKind.RIGHTSQUAREBRACKET);
 					expr = new NewArrayExpr(classType, arraySizeExpr, null);
 					break;
 				}
 				else{
 					parseError("Invalid Term - expecting LEFTSQUAREBRACKET or LEFTPAREN but found " + token.kind);
+					//Never reached
+					expr = null;
 				}
 					
 			}
@@ -662,127 +770,28 @@ public class Parser {
 			else if(token.kind == TokenKind.INT){
 				acceptIt();
 				accept(TokenKind.LEFTSQUAREBRACKET);
-				Expression arraySizeExpr = parseExpression();
+				Expression arraySizeExpr = parseExprA();
 				accept(TokenKind.RIGHTSQUAREBRACKET);
 				expr = new NewArrayExpr(new BaseType(TypeKind.INT, null), arraySizeExpr, null);
 			}
 			else{
 				parseError("Invalid Term - expecting ID or INT but found " + token.kind);
+				//Never reached
+				expr = null;
 			}
 			break;
 		default:
 			parseError("Invalid Term - expecting ID, THIS, LEFTPAREN, NUM, TRUE, FALSE, or NEW but found "
 					+ token.kind);
+			//Never reached
+			expr = null;
 		}
 		//	(binop Expression)*
-		Expression secondExpr = null;
-		while (isBinop(token)) {
-			acceptIt();
-			parseExpression();
-		}
-	}
-	
-	/*
-	 * S ::= A$
-	 * A ::= B (|| B)*
-	 * B ::= C (&& C)*
-	 * C ::= D ((== | !=) D)*
-	 * D ::= E ((<= | < | > | >=) E)*
-	 * E ::= F ((+|-) F)*
-	 * F ::= G ((* | /) G)*
-	 * G ::= (- | !)* H
-	 * H ::= ( A ) | Terminal
-	 */
-	
-	private BinaryExpr parseBinaryExprA(){
-		BinaryExpr expr = parseBinaryExprB();
-		while(token.kind == TokenKind.OR){
-			Operator oper = new Operator(token);
-			acceptIt();
-			Expression secondExpr = parseBinaryExprB();
-			expr = new BinaryExpr(oper, expr, secondExpr, null);
-		}
-		return expr;
-	}
-	
-	private BinaryExpr parseBinaryExprB(){
-		BinaryExpr expr = parseBinaryExprC();
-		while(token.kind == TokenKind.AND){
-			Operator oper = new Operator(token);
-			acceptIt();
-			Expression secondExpr = parseBinaryExprC();
-			expr = new BinaryExpr(oper, expr, secondExpr, null);
-		}
-		return expr;
-	}
-	
-	private BinaryExpr parseBinaryExprC(){
-		BinaryExpr expr = parseBinaryExprD();
-		while (token.kind == TokenKind.LOGICALEQUAL
-				|| token.kind == TokenKind.NOTEQUAL) {
-			Operator oper = new Operator(token);
-			acceptIt();
-			Expression secondExpr = parseBinaryExprD();
-			expr = new BinaryExpr(oper, expr, secondExpr, null);
-		}
-		return expr;
-	}
-	private BinaryExpr parseBinaryExprD(){
-		BinaryExpr expr = parseBinaryExprE();
-		while (token.kind == TokenKind.LESSTHAN
-				|| token.kind == TokenKind.LESSTHANEQUAL
-				|| token.kind == TokenKind.GREATERTHAN
-				|| token.kind == TokenKind.GREATERTHANEQUAL) {
-			Operator oper = new Operator(token);
-			acceptIt();
-			Expression secondExpr = parseBinaryExprE();
-			expr = new BinaryExpr(oper, expr, secondExpr, null);
-		}
-		return expr;
-	}
-	private BinaryExpr parseBinaryExprE(){
-		BinaryExpr expr = parseBinaryExprF();
-		while (token.kind == TokenKind.PLUS
-				|| token.kind == TokenKind.MINUSORARITHMETICNEGATIVE) {
-			Operator oper = new Operator(token);
-			acceptIt();
-			Expression secondExpr = parseBinaryExprF();
-			expr = new BinaryExpr(oper, expr, secondExpr, null);
-		}
-		return expr;
-	}
-	private BinaryExpr parseBinaryExprF(){
-		Expression expr = parseUnaryExprG();
-		while (token.kind == TokenKind.TIMES
-				|| token.kind == TokenKind.DIVIDE) {
-			Operator oper = new Operator(token);
-			acceptIt();
-			Expression secondExpr = parseUnaryExprG();
-			expr = new BinaryExpr(oper, expr, secondExpr, null);
-		}
-		return (BinaryExpr) expr;
-	}
-	private UnaryExpr parseUnaryExprG(){
-		UnaryExpr expr = null;
-		while (token.kind == TokenKind.LOGICALNEGATIVE
-				|| token.kind == TokenKind.MINUSORARITHMETICNEGATIVE) {
-			Operator oper = new Operator(token);
-			acceptIt();
-			Expression innerExpr = parseH();
-			expr = new UnaryExpr(oper, innerExpr, null);
-		}
-		return expr;
-	}
-	private Expression parseH(){
-		Expression expr;
-		if(token.kind == TokenKind.LEFTPAREN){
-			acceptIt();
-			expr = parseBinaryExprA();
-			accept(TokenKind.RIGHTPAREN);
-		}
-		else{
-			expr = parseLiteralExpr();
-		}
+//		Expression secondExpr = null;
+//		while (isBinop(token)) {
+//			acceptIt();
+//			parseExpression();
+//		}
 		return expr;
 	}
 	
