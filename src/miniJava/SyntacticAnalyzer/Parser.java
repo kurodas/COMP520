@@ -222,7 +222,7 @@ public class Parser {
 			return new ClassType(className, null);
 		case BOOLEAN:
 			acceptIt();
-			return new BaseType(TypeKind.INT, null);
+			return new BaseType(TypeKind.BOOLEAN, null);
 		default:
 			parseError("Invalid Term - expecting INT, ID, or BOOLEAN but found "
 					+ token.kind);
@@ -593,18 +593,28 @@ public class Parser {
 		}
 		return expr;
 	}
-	private UnaryExpr parseUnaryExprG(){
-		UnaryExpr expr = null;
-		while (token.kind == TokenKind.LOGICALNEGATIVE
+	private Expression parseUnaryExprG(){
+		Expression expr = null;
+		if (token.kind == TokenKind.LOGICALNEGATIVE
 				|| token.kind == TokenKind.MINUSORARITHMETICNEGATIVE) {
 			Operator oper = new Operator(token);
 			acceptIt();
-			Expression innerExpr = parseH();
+			Expression innerExpr = parseExprH();
 			expr = new UnaryExpr(oper, innerExpr, null);
+			while (token.kind == TokenKind.LOGICALNEGATIVE
+					|| token.kind == TokenKind.MINUSORARITHMETICNEGATIVE) {
+				oper = new Operator(token);
+				acceptIt();
+				innerExpr = parseExprH();
+				expr = new UnaryExpr(oper, innerExpr, null);
+			}
+		}
+		else{
+			expr = parseExprH();
 		}
 		return expr;
 	}
-	private Expression parseH(){
+	private Expression parseExprH(){
 		Expression expr;
 		if(token.kind == TokenKind.LEFTPAREN){
 			acceptIt();
@@ -676,13 +686,11 @@ public class Parser {
 				else{
 					expr = new RefExpr(idRef, null);
 				}
-				break;
 			}
 			else{
-				parseError("Invalid Term - expecting LEFTSQUAREBRACKET, DOT, or LEFTPAREN but found " + token.kind);
-				//Never reached
-				expr = null;
+				expr = new RefExpr(idRef, null);
 			}
+			break;
 		//this ( . id )* ( '(' ArgumentList? ')' )?
 		case THIS:
 			acceptIt();

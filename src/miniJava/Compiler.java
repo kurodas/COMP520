@@ -4,6 +4,8 @@ import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 
+import miniJava.AbstractSyntaxTrees.AST;
+import miniJava.AbstractSyntaxTrees.ASTDisplay;
 import miniJava.SyntacticAnalyzer.Parser;
 import miniJava.SyntacticAnalyzer.Scanner;
 
@@ -42,7 +44,7 @@ public class Compiler {
 		Parser parser = new Parser(scanner, reporter);
 
 		System.out.println("Syntactic analysis ... ");
-		parser.parse();
+		AST ast = parser.parse();
 		System.out.print("Syntactic analysis complete:  ");
 		if (reporter.hasErrors()) {
 			System.out.println("INVALID MiniJava");
@@ -50,6 +52,8 @@ public class Compiler {
 		}
 		else {
 			System.out.println("valid MiniJava");
+			ASTDisplay astDisplay = new ASTDisplay();
+			astDisplay.showTree(ast);
 			System.exit(0);
 		}
 	}
