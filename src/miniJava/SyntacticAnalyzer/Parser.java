@@ -322,56 +322,6 @@ public class Parser {
 			acceptIt();
 			Reference thisRef = new ThisRef(null);
 			return parseQualifiedStatements(thisRef);
-//			QualifiedRef qRef = null;
-//			Identifier id = null;
-//			if (token.kind == TokenKind.DOT) {
-//				acceptIt();
-//				id = new Identifier(token);
-//				accept(TokenKind.ID);
-//				qRef = new QualifiedRef(thisRef,id,null);
-//				while (token.kind == TokenKind.DOT) {
-//					acceptIt();
-//					id = new Identifier(token);
-//					accept(TokenKind.ID);
-//					qRef = new QualifiedRef(qRef, id, null);
-//				}
-//			}
-//			//this ( . id)* '=' Expression ;
-//			if(token.kind == TokenKind.ASSIGNMENTEQUAL){
-//				acceptIt();
-//				expr = parseExprA();
-//				accept(TokenKind.SEMICOLON);
-//				//If there were qualified references, use qRef
-//				if(qRef != null){
-//					return new AssignStmt(qRef,expr,null);
-//				}
-//				//Else use idRef
-//				else{
-//					return new AssignStmt(thisRef,expr, null);
-//				}
-//			}
-//			//this ( . id)* '(' ArgumentList? ')' ;
-//			else if(token.kind == TokenKind.LEFTPAREN){
-//				acceptIt();
-//				ExprList argList = new ExprList();
-//				if(token.kind != TokenKind.RIGHTPAREN){
-//					argList = parseArgumentList();
-//				}
-//				accept(TokenKind.RIGHTPAREN);
-//				accept(TokenKind.SEMICOLON);
-//				//If there were qualified references, use qRef
-//				if(qRef != null){
-//					return new CallStmt(qRef, argList, null);
-//				}
-//				//Else use thisRef
-//				else{
-//					return new CallStmt(thisRef, argList, null);
-//				}
-//			}
-//			else{
-//				parseError("Invalid Term - expecting LEFTPAREN or ASSIGNMENTEQUAL but found "
-//						+ token.kind);
-//			}
 		case RETURN:
 			return parseReturnStatement();
 		case IF:
@@ -654,11 +604,6 @@ public class Parser {
 	}
 
 	private Expression parseExprI(){
-//		//( unop )*
-//		while(isUnop(token)){
-//			acceptIt();
-//		}
-		Expression expr;
 		switch(token.kind){
 		case ID:
 			IdRef idRef = new IdRef(new Identifier(token), null);
@@ -672,46 +617,9 @@ public class Parser {
 			}
 			// id ( . id)* ( '(' ArgumentList? ')' )? 
 			else if(token.kind == TokenKind.LEFTPAREN || token.kind == TokenKind.DOT){
-				QualifiedRef qRef = null;
-				Identifier id = null;
-				if (token.kind == TokenKind.DOT) {
-					acceptIt();
-					id = new Identifier(token);
-					accept(TokenKind.ID);
-					qRef = new QualifiedRef(idRef,id,null);
-					while (token.kind == TokenKind.DOT) {
-						acceptIt();
-						id = new Identifier(token);
-						accept(TokenKind.ID);
-						qRef = new QualifiedRef(qRef, id, null);
-					}
-				}
-				ExprList argList = new ExprList();
-				if (token.kind == TokenKind.LEFTPAREN) {
-					accept(TokenKind.LEFTPAREN);
-					if (token.kind != TokenKind.RIGHTPAREN) {
-						argList = parseArgumentList();
-					}
-					accept(TokenKind.RIGHTPAREN);
-					// If there were qualified references, use qRef
-					if (qRef != null) {
-						return new CallExpr(qRef, argList, null);
-					}
-					// Else use idRef
-					else {
-						return new CallExpr(idRef, argList, null);
-					}
-				}
-				// id ( . id)* 
-				//If there were qualified references, use qRef
-				else if(qRef != null){
-					return new RefExpr(qRef, null);
-				}
-				//Else use idRef
-				else{
-					return new RefExpr(idRef, null);
-				}
+				return parseQualifiedExpressions(idRef);
 			}
+			// id
 			else{
 				return new RefExpr(idRef, null);
 			}
@@ -719,49 +627,7 @@ public class Parser {
 		case THIS:
 			acceptIt();
 			Reference thisRef = new ThisRef(null);
-			QualifiedRef qRef = null;
-			Identifier id = null;
-			if (token.kind == TokenKind.DOT) {
-				acceptIt();
-				id = new Identifier(token);
-				accept(TokenKind.ID);
-				qRef = new QualifiedRef(thisRef,id,null);
-				while (token.kind == TokenKind.DOT) {
-					acceptIt();
-					id = new Identifier(token);
-					accept(TokenKind.ID);
-					qRef = new QualifiedRef(qRef, id, null);
-				}
-			}
-			ExprList argList = new ExprList();
-			if(token.kind == TokenKind.LEFTPAREN){
-				accept(TokenKind.LEFTPAREN);
-				if(token.kind != TokenKind.RIGHTPAREN){
-					argList = parseArgumentList();
-				}
-				accept(TokenKind.RIGHTPAREN);
-				// If there were qualified references, use qRef
-				if (qRef != null) {
-					return new CallExpr(qRef, argList, null);
-				}
-				// Else use idRef
-				else {
-					return new CallExpr(thisRef, argList, null);
-				}
-			}// If there were qualified references, use qRef
-			else if(qRef != null){
-				return new RefExpr(qRef, null);
-			}
-			//Else use thisRef
-			else{
-				return new RefExpr(thisRef, null);
-			}
-//		//	'(' Expression ')'
-//		case LEFTPAREN:
-//			accept(TokenKind.LEFTPAREN);
-//			expr = parseExpression();
-//			accept(TokenKind.RIGHTPAREN);
-//			break;
+			return parseQualifiedExpressions(thisRef);
 		//	num | true | false
 		case NUM:
 		case TRUE:
@@ -770,55 +636,55 @@ public class Parser {
 		//	new (id ( ( ) | [ Expression ] ) | int [ Expression ])
 		case NEW:
 			acceptIt();
-			if(token.kind == TokenKind.ID){
-				//new id '(' ')'
-				Identifier classId = new Identifier(token);
-				ClassType classType = new ClassType(classId, null);
-				acceptIt();
-				if(token.kind == TokenKind.LEFTPAREN){
-					acceptIt();
-					accept(TokenKind.RIGHTPAREN);
-					return new NewObjectExpr(classType, null);
-				}
-				//new id '[' Expression ']'
-				else if(token.kind == TokenKind.LEFTSQUAREBRACKET){
-					acceptIt();
-					Expression arraySizeExpr = parseExprA();
-					accept(TokenKind.RIGHTSQUAREBRACKET);
-					return new NewArrayExpr(classType, arraySizeExpr, null);
-				}
-				else{
-					parseError("Invalid Term - expecting LEFTSQUAREBRACKET or LEFTPAREN but found " + token.kind);
-					//Never reached
-					return null;
-				}
-					
-			}
-			//new int '[' Expression ']'
-			else if(token.kind == TokenKind.INT){
-				acceptIt();
-				accept(TokenKind.LEFTSQUAREBRACKET);
-				Expression arraySizeExpr = parseExprA();
-				accept(TokenKind.RIGHTSQUAREBRACKET);
-				return new NewArrayExpr(new BaseType(TypeKind.INT, null), arraySizeExpr, null);
-			}
-			else{
-				parseError("Invalid Term - expecting ID or INT but found " + token.kind);
-				//Never reached
-				return null;
-			}
+			return parseNewExpressions();
 		default:
 			parseError("Invalid Term - expecting ID, THIS, LEFTPAREN, NUM, TRUE, FALSE, or NEW but found "
 					+ token.kind);
 			//Never reached
 			return null;
 		}
-		//	(binop Expression)*
-//		Expression secondExpr = null;
-//		while (isBinop(token)) {
-//			acceptIt();
-//			parseExpression();
-//		}
+	}
+	
+	private Expression parseQualifiedExpressions(Reference baseRef){
+		QualifiedRef qRef = null;
+		Identifier id = null;
+		if (token.kind == TokenKind.DOT) {
+			acceptIt();
+			id = new Identifier(token);
+			accept(TokenKind.ID);
+			qRef = new QualifiedRef(baseRef,id,null);
+			while (token.kind == TokenKind.DOT) {
+				acceptIt();
+				id = new Identifier(token);
+				accept(TokenKind.ID);
+				qRef = new QualifiedRef(qRef, id, null);
+			}
+		}
+		ExprList argList = new ExprList();
+		if (token.kind == TokenKind.LEFTPAREN) {
+			accept(TokenKind.LEFTPAREN);
+			if (token.kind != TokenKind.RIGHTPAREN) {
+				argList = parseArgumentList();
+			}
+			accept(TokenKind.RIGHTPAREN);
+			// If there were qualified references, use qRef
+			if (qRef != null) {
+				return new CallExpr(qRef, argList, null);
+			}
+			// Else use baseRef
+			else {
+				return new CallExpr(baseRef, argList, null);
+			}
+		}
+		// id ( . id)* 
+		//If there were qualified references, use qRef
+		else if(qRef != null){
+			return new RefExpr(qRef, null);
+		}
+		//Else use baseRef
+		else{
+			return new RefExpr(baseRef, null);
+		}
 	}
 	
 	private LiteralExpr parseLiteralExpr(){
@@ -838,6 +704,50 @@ public class Parser {
 					+ token.kind);
 		}
 		return expr;
+	}
+	
+	private Expression parseNewExpressions(){
+		if(token.kind == TokenKind.ID){
+			//new id '(' ')'
+			Identifier classId = new Identifier(token);
+			ClassType classType = new ClassType(classId, null);
+			acceptIt();
+			if(token.kind == TokenKind.LEFTPAREN){
+				acceptIt();
+				accept(TokenKind.RIGHTPAREN);
+				return new NewObjectExpr(classType, null);
+			}
+			//new id '[' Expression ']'
+			else if(token.kind == TokenKind.LEFTSQUAREBRACKET){
+				acceptIt();
+				Expression arraySizeExpr = parseExprA();
+				accept(TokenKind.RIGHTSQUAREBRACKET);
+				return new NewArrayExpr(classType, arraySizeExpr, null);
+			}
+			else{
+				parseError("Invalid Term - expecting LEFTSQUAREBRACKET or LEFTPAREN but found " + token.kind);
+				//Never reached
+				return null;
+			}
+				
+		}
+		else if(token.kind == TokenKind.INT){
+			return parseNewIntArrayExpression();
+		}
+		else{
+			parseError("Invalid Term - expecting ID or INT but found " + token.kind);
+			//Never reached
+			return null;
+		}
+	}
+	
+	//new int '[' Expression ']'
+	private Expression parseNewIntArrayExpression(){
+		accept(TokenKind.INT);
+		accept(TokenKind.LEFTSQUAREBRACKET);
+		Expression arraySizeExpr = parseExprA();
+		accept(TokenKind.RIGHTSQUAREBRACKET);
+		return new NewArrayExpr(new BaseType(TypeKind.INT, null), arraySizeExpr, null);
 	}
 	
 	private boolean isBinop(Token t){
