@@ -44,17 +44,25 @@ public class Compiler {
 		Parser parser = new Parser(scanner, reporter);
 
 		System.out.println("Syntactic analysis ... ");
-		AST ast = parser.parse();
-		System.out.print("Syntactic analysis complete:  ");
-		if (reporter.hasErrors()) {
-			System.out.println("INVALID MiniJava");
+		AST ast;
+		try {
+			ast = parser.parse();
+			System.out.print("Syntactic analysis complete:  ");
+			if (reporter.hasErrors()) {
+				System.out.println("INVALID MiniJava");
+				System.exit(4);
+			}
+			else {
+				System.out.println("valid MiniJava");
+				ASTDisplay astDisplay = new ASTDisplay();
+				astDisplay.showTree(ast);
+				System.exit(0);
+			}
+		} catch (Throwable e) {
+			if (reporter.hasErrors()) {
+				System.out.println("Syntactic analysis complete: INVALID MiniJava");
+			}
 			System.exit(4);
-		}
-		else {
-			System.out.println("valid MiniJava");
-			ASTDisplay astDisplay = new ASTDisplay();
-			astDisplay.showTree(ast);
-			System.exit(0);
 		}
 	}
 	
