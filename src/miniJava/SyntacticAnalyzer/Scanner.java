@@ -217,6 +217,8 @@ public class Scanner {
 				return TokenKind.TRUE;
 			} else if (currentSpelling.toString().equals("false")) {
 				return TokenKind.FALSE;
+			} else if (currentSpelling.toString().equals("null")) {
+				return TokenKind.NULL;
 			} else {// Token is not a keyword
 				return TokenKind.ID;
 			}

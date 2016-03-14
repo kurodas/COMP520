@@ -28,6 +28,7 @@ import miniJava.AbstractSyntaxTrees.MethodDecl;
 import miniJava.AbstractSyntaxTrees.MethodDeclList;
 import miniJava.AbstractSyntaxTrees.NewArrayExpr;
 import miniJava.AbstractSyntaxTrees.NewObjectExpr;
+import miniJava.AbstractSyntaxTrees.NullLiteral;
 import miniJava.AbstractSyntaxTrees.Operator;
 import miniJava.AbstractSyntaxTrees.Package;
 import miniJava.AbstractSyntaxTrees.ParameterDecl;
@@ -632,6 +633,7 @@ public class Parser {
 		case NUM:
 		case TRUE:
 		case FALSE:
+		case NULL:
 			return parseLiteralExpr();
 		//	new (id ( ( ) | [ Expression ] ) | int [ Expression ])
 		case NEW:
@@ -697,6 +699,10 @@ public class Parser {
 		case TRUE:
 		case FALSE:
 			expr = new LiteralExpr(new BooleanLiteral(token),null);
+			acceptIt();
+			break;
+		case NULL:
+			expr = new LiteralExpr(new NullLiteral(token), null);
 			acceptIt();
 			break;
 		default:
