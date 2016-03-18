@@ -17,4 +17,6 @@ public abstract class Declaration extends AST {
 	
 	public String name;
 	public Type type;
+	public boolean duplicated;
+	public boolean isStatic, isPrivate;
 }
