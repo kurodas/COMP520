@@ -12,9 +12,14 @@ public class Scanner {
 	private char currentChar;
 	private StringBuilder currentSpelling;
 	
+	SourcePosition pos;
+	int line, column;
+	
 	public Scanner(BufferedInputStream inputStream, ErrorReporter reporter) {
 		this.inputStream = inputStream;
 		this.reporter = reporter;
+		line = 1;
+		column = 1;
 		// initialize scanner state
 		readChar();
 	}
@@ -61,10 +66,13 @@ public class Scanner {
 	private void readChar() {
 		try {
 			int c = inputStream.read();
+			column++;
 			currentChar = (char) c;
 			// Standardize newline chars
 			if (currentChar == eolUnix || currentChar == eolWindows) {
 				currentChar = '\n';
+				column=0;
+				line++;
 			}
 			// Substitute eot for eot or -1
 			else if (c == -1 || c == eot) {
@@ -138,11 +146,13 @@ public class Scanner {
 				}
 				else if(inCommentBlock && 
 						(currentChar == -1 || currentChar == eot)){
+					pos = new SourcePosition(line, column);
 					scanError("Unterminated block comment");
-					return new Token(TokenKind.ERROR, "-1");
+					return new Token(TokenKind.ERROR, "-1", pos);
 				}
 				else if(currentChar == -1 || currentChar == eot){
-					return new Token(TokenKind.EOT, "eot");
+					pos = new SourcePosition(line, column);
+					return new Token(TokenKind.EOT, "eot", pos);
 				}
 				else
 					skipIt();
@@ -154,9 +164,10 @@ public class Scanner {
 
 		// collect spelling and identify token kind
 		currentSpelling = new StringBuilder();
+		pos = new SourcePosition(line, column);
 		TokenKind kind = scanToken();
 		// return new token
-		return new Token(kind, currentSpelling.toString());
+		return new Token(kind, currentSpelling.toString(), pos);
 	}
 
 	public TokenKind scanToken() {

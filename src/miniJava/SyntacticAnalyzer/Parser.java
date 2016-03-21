@@ -54,9 +54,12 @@ public class Parser {
 	private Token token;
 	private boolean trace = true;
 
+	private SourcePosition previousTokenPosition;
+	
 	public Parser(Scanner scanner, ErrorReporter reporter) {
 		this.scanner = scanner;
 		this.reporter = reporter;
+		previousTokenPosition = new SourcePosition();
 	}
 
 
@@ -793,6 +796,7 @@ public class Parser {
 			if (trace)
 				pTrace();
 			String tokenSpelling = token.spelling;
+			previousTokenPosition = token.posn;
 			token = scanner.scan();
 			return tokenSpelling;
 		}

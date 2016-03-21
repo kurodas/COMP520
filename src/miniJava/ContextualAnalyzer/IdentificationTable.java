@@ -1,66 +1,68 @@
 package miniJava.ContextualAnalyzer;
 
+import java.util.HashMap;
+import java.util.Stack;
+
+import miniJava.ErrorReporter;
 import miniJava.AbstractSyntaxTrees.Declaration;
+import miniJava.AbstractSyntaxTrees.Identifier;
 
 public class IdentificationTable {
 
-	private int level;
-	private IdEntry latest;
-
-	public IdentificationTable() {
-		level = 0;
-		latest = null;
+	private ErrorReporter errorReporter;
+	
+	public static final int PREDEFINED_SCOPE = 0;
+	public static final int CLASS_NAME_SCOPE = 1;
+	public static final int MEMBER_NAME_SCOPE = 2;
+	public static final int PARAMETER_NAME_SCOPE = 3;
+	public static final int LOCAL_SCOPE = 4;
+	
+	Stack<HashMap<String, Declaration>> scopes = new Stack<HashMap<String, Declaration>>();
+	
+	public IdentificationTable(ErrorReporter reporter) {
+		errorReporter = reporter;
+		//Open predefined scope
+		openScope();
 	}
 
 	// Opens a new level in the identification table, 1 higher than the
 	// current topmost level.
 
 	public void openScope() {
-		level++;
+		scopes.add(new HashMap<String, Declaration>());
 	}
 
 	// Closes the topmost level in the identification table, discarding
 	// all entries belonging to that level.
 
 	public void closeScope() {
-
-		IdEntry entry, local;
-
-		// Presumably, idTable.level > 0.
-		entry = this.latest;
-		while (entry.level == this.level) {
-			local = entry;
-			entry = local.previous;
-		}
-		this.level--;
-		this.latest = entry;
+		if(scopes.size() > 1)
+			scopes.pop();
+		else
+			errorReporter.reportError("Cannot close predefined scope.");
 	}
 
 	// Makes a new entry in the identification table for the given identifier
-	// and attribute. The new entry belongs to the current level.
-	// duplicated is set to to true iff there is already an entry for the
-	// same identifier at the current level.
+	// and attribute. The new entry belongs to the current highest scope
+	// Results in an error if the identifier has already been declared
 
 	public void enter(String id, Declaration attr) {
-
-		IdEntry entry = this.latest;
-		boolean present = false, searching = true;
-
-		// Check for duplicate entry ...
-		while (searching) {
-			if (entry == null || entry.level < this.level)
-				searching = false;
-			else if (entry.id.equals(id)) {
-				present = true;
-				searching = false;
-			} else
-				entry = entry.previous;
+		
+		// Declarations at level 4 or higher may not hide declarations at levels 3 or higher.
+		for(int i = PARAMETER_NAME_SCOPE; i < scopes.size(); i++){
+			if(scopes.get(i).containsKey(id)){
+				errorReporter.reportError(id + " has already been declared.");
+				return;
+			}
 		}
-
-		attr.duplicated = present;
-		// Add new entry ...
-		entry = new IdEntry(id, attr, this.level, this.latest);
-		this.latest = entry;
+		HashMap<String, Declaration> currentScope = scopes.peek();
+		// Checks that declaration has not been made in currentScope if currentScope is level 2 or below
+		if(!currentScope.containsKey(id)){
+			currentScope.put(id, attr);
+		}
+		else{
+			errorReporter.reportError(id + " has already been declared.");
+		}
 	}
 
 	// Finds an entry for the given identifier in the identification table,
@@ -70,26 +72,33 @@ public class IdentificationTable {
 	// otherwise returns the attribute field of the entry found.
 
 	public Declaration retrieve(String id) {
-
-		IdEntry entry;
-		Declaration attr = null;
-		boolean present = false, searching = true;
-
-		entry = this.latest;
-		while (searching) {
-			if (entry == null)
-				searching = false;
-			else if (entry.id.equals(id)) {
-				present = true;
-				searching = false;
-				attr = entry.attr;
+		HashMap<String, Declaration> currentScope = scopes.peek();
+		int currentScopeLevel = scopes.indexOf(currentScope);
+		while(currentScopeLevel >= 0){
+			Declaration decl = currentScope.get(id);
+			if(decl != null){
+				return decl;
+			} else if (currentScopeLevel > 0) {
+				currentScopeLevel--;
+				currentScope = scopes.get(currentScopeLevel);
 			} else
-				entry = entry.previous;
+				break;
 		}
-		if(present)
-			return attr;
-		else
-			return null;
+		return null;
+	}
+	
+	public void linkDeclaration(Identifier id){
+		Declaration decl;
+		for(int i = scopes.size() - 1; i >= 0; i--){
+//			if (i != 2)
+				decl = scopes.get(i).get(id.spelling);
+//			else
+//				decl = scopes.get(i).get(className + "."+id.spelling);
+//			if(decl != null){
+				id.decl = decl;
+				
+//			}
+		}
 	}
 
 }

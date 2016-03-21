@@ -170,6 +170,15 @@ public class ASTDisplay implements Visitor<String,Object> {
         return null;
     }
     
+    public Object visitUnsupportedType(UnsupportedType type, String arg){
+    	show(arg, type);
+    	return null;
+    }
+    
+    public Object visitErrorType(ErrorType type, String arg){
+    	show(arg, type.typeKind + " " + type.toString());
+    	return null;
+    }
 	
 	///////////////////////////////////////////////////////////////////////////////
 	//
