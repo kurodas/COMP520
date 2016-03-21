@@ -1,0 +1,125 @@
+********** miniJava Compiler (PA2) **********
+Syntactic Analysis ... 
+Syntactic Analysis OK
+======= AST Display =========================
+Package
+  ClassDeclList [1]
+  . ClassDecl
+  .   "id" classname
+  .   FieldDeclList [0]
+  .   MethodDeclList [1]
+  .   . (public) MethodDecl
+  .   .   VOID BaseType
+  .   .   "p" methodname
+  .   .   ParameterDeclList [0]
+  .   .   StmtList [10]
+  .   .   . VarDeclStmt
+  .   .   .   VarDecl
+  .   .   .     INT BaseType
+  .   .   .     "x" varname
+  .   .   .   BinaryExpr
+  .   .   .     "+" Operator
+  .   .   .       LiteralExpr
+  .   .   .         "1" IntLiteral
+  .   .   .       LiteralExpr
+  .   .   .         "2" IntLiteral
+  .   .   . VarDeclStmt
+  .   .   .   VarDecl
+  .   .   .     INT BaseType
+  .   .   .     "y" varname
+  .   .   .   BinaryExpr
+  .   .   .     "*" Operator
+  .   .   .       RefExpr
+  .   .   .         IdRef
+  .   .   .           "x" Identifier
+  .   .   .       LiteralExpr
+  .   .   .         "3" IntLiteral
+  .   .   . VarDeclStmt
+  .   .   .   VarDecl
+  .   .   .     INT BaseType
+  .   .   .     "z" varname
+  .   .   .   BinaryExpr
+  .   .   .     "/" Operator
+  .   .   .       RefExpr
+  .   .   .         IdRef
+  .   .   .           "y" Identifier
+  .   .   .       LiteralExpr
+  .   .   .         "4" IntLiteral
+  .   .   . VarDeclStmt
+  .   .   .   VarDecl
+  .   .   .     BOOLEAN BaseType
+  .   .   .     "a" varname
+  .   .   .   BinaryExpr
+  .   .   .     ">" Operator
+  .   .   .       RefExpr
+  .   .   .         IdRef
+  .   .   .           "z" Identifier
+  .   .   .       LiteralExpr
+  .   .   .         "5" IntLiteral
+  .   .   . VarDeclStmt
+  .   .   .   VarDecl
+  .   .   .     BOOLEAN BaseType
+  .   .   .     "b" varname
+  .   .   .   BinaryExpr
+  .   .   .     ">=" Operator
+  .   .   .       RefExpr
+  .   .   .         IdRef
+  .   .   .           "y" Identifier
+  .   .   .       LiteralExpr
+  .   .   .         "6" IntLiteral
+  .   .   . VarDeclStmt
+  .   .   .   VarDecl
+  .   .   .     BOOLEAN BaseType
+  .   .   .     "c" varname
+  .   .   .   BinaryExpr
+  .   .   .     "<" Operator
+  .   .   .       RefExpr
+  .   .   .         IdRef
+  .   .   .           "x" Identifier
+  .   .   .       LiteralExpr
+  .   .   .         "7" IntLiteral
+  .   .   . VarDeclStmt
+  .   .   .   VarDecl
+  .   .   .     INT BaseType
+  .   .   .     "v" varname
+  .   .   .   BinaryExpr
+  .   .   .     "<=" Operator
+  .   .   .       RefExpr
+  .   .   .         IdRef
+  .   .   .           "x" Identifier
+  .   .   .       LiteralExpr
+  .   .   .         "8" IntLiteral
+  .   .   . VarDeclStmt
+  .   .   .   VarDecl
+  .   .   .     INT BaseType
+  .   .   .     "w" varname
+  .   .   .   BinaryExpr
+  .   .   .     "!=" Operator
+  .   .   .       RefExpr
+  .   .   .         IdRef
+  .   .   .           "d" Identifier
+  .   .   .       LiteralExpr
+  .   .   .         "9" IntLiteral
+  .   .   . VarDeclStmt
+  .   .   .   VarDecl
+  .   .   .     BOOLEAN BaseType
+  .   .   .     "d" varname
+  .   .   .   BinaryExpr
+  .   .   .     "&&" Operator
+  .   .   .       RefExpr
+  .   .   .         IdRef
+  .   .   .           "a" Identifier
+  .   .   .       LiteralExpr
+  .   .   .         "false" BooleanLiteral
+  .   .   . VarDeclStmt
+  .   .   .   VarDecl
+  .   .   .     BOOLEAN BaseType
+  .   .   .     "r" varname
+  .   .   .   BinaryExpr
+  .   .   .     "||" Operator
+  .   .   .       RefExpr
+  .   .   .         IdRef
+  .   .   .           "d" Identifier
+  .   .   .       LiteralExpr
+  .   .   .         "true" BooleanLiteral
+=============================================
