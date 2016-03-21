@@ -21,6 +21,6 @@ public class SourcePosition {
 	  }
 
 	  public String toString() {
-	    return "line: " + line + " column: " + column + ")";
+	    return "line: " + line + " column: " + column;
 	  }
 }

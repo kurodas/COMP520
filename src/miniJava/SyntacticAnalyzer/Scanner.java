@@ -70,9 +70,11 @@ public class Scanner {
 			currentChar = (char) c;
 			// Standardize newline chars
 			if (currentChar == eolUnix || currentChar == eolWindows) {
+				if(currentChar == eolUnix){
+					column=0;
+					line++;
+				}
 				currentChar = '\n';
-				column=0;
-				line++;
 			}
 			// Substitute eot for eot or -1
 			else if (c == -1 || c == eot) {
