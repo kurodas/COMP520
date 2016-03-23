@@ -5,7 +5,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 
 import miniJava.AbstractSyntaxTrees.AST;
-import miniJava.AbstractSyntaxTrees.ASTDisplay;
+import miniJava.ContextualAnalyzer.Identification;
+import miniJava.ContextualAnalyzer.TypeChecker;
 import miniJava.SyntacticAnalyzer.Parser;
 import miniJava.SyntacticAnalyzer.Scanner;
 
@@ -47,15 +48,26 @@ public class Compiler {
 		AST ast;
 		try {
 			ast = parser.parse();
-			System.out.print("Syntactic analysis complete:  ");
+			System.out.println("Syntactic analysis complete:  ");
 			if (reporter.hasErrors()) {
 				System.out.println("INVALID MiniJava");
 				System.exit(4);
 			}
 			else {
+				Identification identification = new Identification(reporter);
+				identification.check(ast);
+				if(reporter.hasErrors()){
+//					System.out.println("Identification errors");
+					System.exit(4);
+				}
+				TypeChecker typeChecker = new TypeChecker(reporter);
+				typeChecker.check(ast);
+				if(reporter.hasErrors()){
+					System.exit(4);
+				}
 				System.out.println("valid MiniJava");
-				ASTDisplay astDisplay = new ASTDisplay();
-				astDisplay.showTree(ast);
+//				ASTDisplay astDisplay = new ASTDisplay();
+//				astDisplay.showTree(ast);
 				System.exit(0);
 			}
 		} catch (Throwable e) {

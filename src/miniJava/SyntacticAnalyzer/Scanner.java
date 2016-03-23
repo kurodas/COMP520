@@ -70,6 +70,8 @@ public class Scanner {
 			currentChar = (char) c;
 			// Standardize newline chars
 			if (currentChar == eolUnix || currentChar == eolWindows) {
+				//Update column and line counter only for eolUnix
+				//in order to avoid incrementing line twice
 				if(currentChar == eolUnix){
 					column=0;
 					line++;

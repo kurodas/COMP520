@@ -46,7 +46,7 @@ public class IdentificationTable {
 	// and attribute. The new entry belongs to the current highest scope
 	// Results in an error if the identifier has already been declared
 
-	public void enter(String id, Declaration attr) {
+	public void enter(String id, Declaration decl) {
 		
 		// Declarations at level 4 or higher may not hide declarations at levels 3 or higher.
 		for(int i = PARAMETER_NAME_SCOPE; i < scopes.size(); i++){
@@ -58,7 +58,7 @@ public class IdentificationTable {
 		HashMap<String, Declaration> currentScope = scopes.peek();
 		// Checks that declaration has not been made in currentScope if currentScope is level 2 or below
 		if(!currentScope.containsKey(id)){
-			currentScope.put(id, attr);
+			currentScope.put(id, decl);
 		}
 		else{
 			errorReporter.reportError(id + " has already been declared.");
@@ -87,18 +87,10 @@ public class IdentificationTable {
 		return null;
 	}
 	
-	public void linkDeclaration(Identifier id){
-		Declaration decl;
-		for(int i = scopes.size() - 1; i >= 0; i--){
-//			if (i != 2)
-				decl = scopes.get(i).get(id.spelling);
-//			else
-//				decl = scopes.get(i).get(className + "."+id.spelling);
-//			if(decl != null){
-				id.decl = decl;
-				
-//			}
-		}
+	public Declaration checkMemberDecls(Declaration decl){
+		HashMap<String, Declaration> classDecls = scopes.get(1);
+		Declaration matchingDecl = classDecls.get(decl.name);
+		return matchingDecl;
 	}
 
 }
