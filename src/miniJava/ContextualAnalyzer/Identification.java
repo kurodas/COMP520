@@ -40,6 +40,7 @@ import miniJava.AbstractSyntaxTrees.ParameterDecl;
 import miniJava.AbstractSyntaxTrees.ParameterDeclList;
 import miniJava.AbstractSyntaxTrees.QualifiedRef;
 import miniJava.AbstractSyntaxTrees.RefExpr;
+import miniJava.AbstractSyntaxTrees.Reference;
 import miniJava.AbstractSyntaxTrees.ReturnStmt;
 import miniJava.AbstractSyntaxTrees.Statement;
 import miniJava.AbstractSyntaxTrees.StatementList;
@@ -56,12 +57,12 @@ import miniJava.SyntacticAnalyzer.SourcePosition;
 import miniJava.SyntacticAnalyzer.Token;
 import miniJava.SyntacticAnalyzer.TokenKind;
 
-public class Identification implements Visitor<IdentificationTable, Object> {
+public class Identification implements Visitor<Object, Object> {
 	private IdentificationTable idTable;
 	private ErrorReporter reporter;
 
 	@Override
-	public Object visitPackage(Package prog, IdentificationTable arg) {
+	public Object visitPackage(Package prog, Object arg) {
 		//Open class name scope
 		idTable.openScope();
 		//Enter all class declarations into idTable first
@@ -97,27 +98,27 @@ public class Identification implements Visitor<IdentificationTable, Object> {
 	///////////////////////////////////////////////////////////////////////////////
     
 	@Override
-	public Object visitClassDecl(ClassDecl clas, IdentificationTable arg) {
-		idTable.openScope();
+	public Object visitClassDecl(ClassDecl clas, Object arg) {
+//		idTable.openScope();
 		for (FieldDecl f : clas.fieldDeclList) {
 			f.visit(this, arg);
 		}
 		for (MethodDecl m : clas.methodDeclList) {
 			m.visit(this, arg);
 		}
-		idTable.closeScope();
+//		idTable.closeScope();
 		return null;
 	}
 
 	@Override
-	public Object visitFieldDecl(FieldDecl f, IdentificationTable arg) {
+	public Object visitFieldDecl(FieldDecl f, Object arg) {
 		idTable.enter(f.name, f);
 		f.type.visit(this, arg);
 		return null;
 	}
 
 	@Override
-	public Object visitMethodDecl(MethodDecl m, IdentificationTable arg) {
+	public Object visitMethodDecl(MethodDecl m, Object arg) {
 		idTable.enter(m.name, m);
 		m.type.visit(this, arg);
 		ParameterDeclList pdl = m.parameterDeclList;
@@ -135,14 +136,14 @@ public class Identification implements Visitor<IdentificationTable, Object> {
 	}
 
 	@Override
-	public Object visitParameterDecl(ParameterDecl pd, IdentificationTable arg) {
+	public Object visitParameterDecl(ParameterDecl pd, Object arg) {
 		idTable.enter(pd.name, pd);
 		pd.type.visit(this, arg);
 		return null;
 	}
 
 	@Override
-	public Object visitVarDecl(VarDecl vd, IdentificationTable arg) {
+	public Object visitVarDecl(VarDecl vd, Object arg) {
 		idTable.enter(vd.name, vd);
 		vd.type.visit(this, arg);
 		return null;
@@ -155,12 +156,12 @@ public class Identification implements Visitor<IdentificationTable, Object> {
 	///////////////////////////////////////////////////////////////////////////////
 
 	@Override
-	public Object visitBaseType(BaseType type, IdentificationTable arg) {
+	public Object visitBaseType(BaseType type, Object arg) {
 		return null;
 	}
 
 	@Override
-	public Object visitClassType(ClassType type, IdentificationTable arg) {
+	public Object visitClassType(ClassType type, Object arg) {
 		Declaration classDecl = idTable.retrieve(type.className.spelling);
 		if(classDecl != null){
 			type.className.decl = classDecl;
@@ -172,12 +173,12 @@ public class Identification implements Visitor<IdentificationTable, Object> {
 	}
 
 	@Override
-	public Object visitArrayType(ArrayType type, IdentificationTable arg) {
+	public Object visitArrayType(ArrayType type, Object arg) {
 		type.eltType.visit(this, arg);
 		return null;
 	}
 	
-	public Object visitUnsupportedType(UnsupportedType type, IdentificationTable arg){
+	public Object visitUnsupportedType(UnsupportedType type, Object arg){
 		Declaration stringDecl = idTable.retrieve(type.className.spelling);
 		if(stringDecl != null){
 			type.className.decl = stringDecl;
@@ -187,7 +188,7 @@ public class Identification implements Visitor<IdentificationTable, Object> {
 		return null;
 	}
 	
-	public Object visitErrorType(ErrorType type, IdentificationTable arg){
+	public Object visitErrorType(ErrorType type, Object arg){
 		return null;
 	}
 
@@ -198,7 +199,7 @@ public class Identification implements Visitor<IdentificationTable, Object> {
 	///////////////////////////////////////////////////////////////////////////////
 	
 	@Override
-	public Object visitBlockStmt(BlockStmt stmt, IdentificationTable arg) {
+	public Object visitBlockStmt(BlockStmt stmt, Object arg) {
 		StatementList sl = stmt.sl;
 		idTable.openScope();
 		for (Statement s : sl) {
@@ -209,7 +210,7 @@ public class Identification implements Visitor<IdentificationTable, Object> {
 	}
 
 	@Override
-	public Object visitVardeclStmt(VarDeclStmt stmt, IdentificationTable arg) {
+	public Object visitVardeclStmt(VarDeclStmt stmt, Object arg) {
 		//Visit initExp first to make sure that the variable itself
 		//is not being used in the declaration
 		stmt.initExp.visit(this, arg);
@@ -218,7 +219,7 @@ public class Identification implements Visitor<IdentificationTable, Object> {
 	}
 
 	@Override
-	public Object visitAssignStmt(AssignStmt stmt, IdentificationTable arg) {
+	public Object visitAssignStmt(AssignStmt stmt, Object arg) {
 		//Visit value being assigned to first to make sure it has been declared
 		stmt.val.visit(this, arg);
 		stmt.ref.visit(this, arg);
@@ -226,7 +227,7 @@ public class Identification implements Visitor<IdentificationTable, Object> {
 	}
 
 	@Override
-	public Object visitIxAssignStmt(IxAssignStmt stmt, IdentificationTable arg) {
+	public Object visitIxAssignStmt(IxAssignStmt stmt, Object arg) {
 		// show(arg,stmt);
 		stmt.val.visit(this, arg);
 		stmt.ixRef.visit(this, arg);
@@ -234,7 +235,7 @@ public class Identification implements Visitor<IdentificationTable, Object> {
 	}
 
 	@Override
-	public Object visitCallStmt(CallStmt stmt, IdentificationTable arg) {
+	public Object visitCallStmt(CallStmt stmt, Object arg) {
 		stmt.methodRef.visit(this, arg);
 		ExprList al = stmt.argList;
 		for (Expression e : al) {
@@ -244,14 +245,14 @@ public class Identification implements Visitor<IdentificationTable, Object> {
 	}
 
 	@Override
-	public Object visitReturnStmt(ReturnStmt stmt, IdentificationTable arg) {
+	public Object visitReturnStmt(ReturnStmt stmt, Object arg) {
 		if (stmt.returnExpr != null)
 			stmt.returnExpr.visit(this, arg);
 		return null;
 	}
 
 	@Override
-	public Object visitIfStmt(IfStmt stmt, IdentificationTable arg) {
+	public Object visitIfStmt(IfStmt stmt, Object arg) {
 		stmt.cond.visit(this, arg);
 		stmt.thenStmt.visit(this, arg);
 		if (stmt.elseStmt != null)
@@ -260,7 +261,7 @@ public class Identification implements Visitor<IdentificationTable, Object> {
 	}
 
 	@Override
-	public Object visitWhileStmt(WhileStmt stmt, IdentificationTable arg) {
+	public Object visitWhileStmt(WhileStmt stmt, Object arg) {
 		stmt.cond.visit(this, arg);
 		stmt.body.visit(this, arg);
 		return null;
@@ -273,14 +274,14 @@ public class Identification implements Visitor<IdentificationTable, Object> {
 	///////////////////////////////////////////////////////////////////////////////
 	
 	@Override
-	public Object visitUnaryExpr(UnaryExpr expr, IdentificationTable arg) {
+	public Object visitUnaryExpr(UnaryExpr expr, Object arg) {
 		expr.operator.visit(this, arg);
 		expr.expr.visit(this, arg);
 		return null;
 	}
 
 	@Override
-	public Object visitBinaryExpr(BinaryExpr expr, IdentificationTable arg) {
+	public Object visitBinaryExpr(BinaryExpr expr, Object arg) {
 		expr.operator.visit(this, arg);
 		expr.left.visit(this, arg);
 		expr.right.visit(this, arg);
@@ -288,13 +289,13 @@ public class Identification implements Visitor<IdentificationTable, Object> {
 	}
 
 	@Override
-	public Object visitRefExpr(RefExpr expr, IdentificationTable arg) {
+	public Object visitRefExpr(RefExpr expr, Object arg) {
 		expr.ref.visit(this, arg);
 		return null;
 	}
 
 	@Override
-	public Object visitCallExpr(CallExpr expr, IdentificationTable arg) {
+	public Object visitCallExpr(CallExpr expr, Object arg) {
 		expr.functionRef.visit(this, arg);
 		ExprList al = expr.argList;
 		for (Expression e : al) {
@@ -304,55 +305,58 @@ public class Identification implements Visitor<IdentificationTable, Object> {
 	}
 
 	@Override
-	public Object visitLiteralExpr(LiteralExpr expr, IdentificationTable arg) {
+	public Object visitLiteralExpr(LiteralExpr expr, Object arg) {
 		expr.lit.visit(this, arg);
 		return null;
 	}
 
 	@Override
-	public Object visitNewObjectExpr(NewObjectExpr expr, IdentificationTable arg) {
+	public Object visitNewObjectExpr(NewObjectExpr expr, Object arg) {
 		expr.classtype.visit(this, arg);
 		return null;
 	}
 
 	@Override
-	public Object visitNewArrayExpr(NewArrayExpr expr, IdentificationTable arg) {
+	public Object visitNewArrayExpr(NewArrayExpr expr, Object arg) {
 		expr.eltType.visit(this, arg);
 		expr.sizeExpr.visit(this, arg);
 		return null;
 	}
 
 	@Override
-	public Object visitQualifiedRef(QualifiedRef qr, IdentificationTable arg) {
+	public Object visitQualifiedRef(QualifiedRef qr, Object arg) {
 		qr.ref.visit(this, arg);
-		if(qr.ref.decl instanceof ClassDecl){
-			
+		if(qr.ref instanceof ThisRef){
+			qr.ref.decl = idTable.retrieve(qr.id.spelling);
+			if(qr.ref.decl == null){
+				reportUndeclared(((ClassType)qr.ref.type).className);
+			}
 		}
-		else if(qr.ref.decl instanceof MemberDecl){
-			
-		}
-		else if(qr.ref.decl instanceof LocalDecl){
-			
+		else if(qr.ref instanceof IdRef){
+			qr.ref.decl = idTable.retrieve(((IdRef)qr.ref).id.spelling);
+			if(qr.ref.decl == null){
+				reportUndeclared((((IdRef)qr.ref).id));
+			}
 		}
 		qr.id.visit(this, arg);
 		return null;
 	}
 
 	@Override
-	public Object visitIndexedRef(IndexedRef ir, IdentificationTable arg) {
+	public Object visitIndexedRef(IndexedRef ir, Object arg) {
 		ir.indexExpr.visit(this, arg);
 		ir.idRef.visit(this, arg);
 		return null;
 	}
 
 	@Override
-	public Object visitIdRef(IdRef ref, IdentificationTable arg) {
+	public Object visitIdRef(IdRef ref, Object arg) {
 		ref.id.visit(this, arg);
 		return null;
 	}
 
 	@Override
-	public Object visitThisRef(ThisRef ref, IdentificationTable arg) {
+	public Object visitThisRef(ThisRef ref, Object arg) {
 		return null;
 	}
 
@@ -363,7 +367,7 @@ public class Identification implements Visitor<IdentificationTable, Object> {
 	///////////////////////////////////////////////////////////////////////////////
 	
 	@Override
-	public Object visitIdentifier(Identifier id, IdentificationTable arg) {
+	public Object visitIdentifier(Identifier id, Object arg) {
 		Declaration decl = idTable.retrieve(id.spelling);
 		if(decl != null){
 			id.decl = decl;
@@ -375,22 +379,22 @@ public class Identification implements Visitor<IdentificationTable, Object> {
 	}
 
 	@Override
-	public Object visitOperator(Operator op, IdentificationTable arg) {
+	public Object visitOperator(Operator op, Object arg) {
 		return null;
 	}
 
 	@Override
-	public Object visitIntLiteral(IntLiteral num, IdentificationTable arg) {
+	public Object visitIntLiteral(IntLiteral num, Object arg) {
 		return null;
 	}
 
 	@Override
-	public Object visitBooleanLiteral(BooleanLiteral bool, IdentificationTable arg) {
+	public Object visitBooleanLiteral(BooleanLiteral bool, Object arg) {
 		return null;
 	}
 
 	@Override
-	public Object visitNullLiteral(NullLiteral nullLit, IdentificationTable arg) {
+	public Object visitNullLiteral(NullLiteral nullLit, Object arg) {
 		return null;
 	}
 

@@ -4,8 +4,8 @@ import java.util.HashMap;
 import java.util.Stack;
 
 import miniJava.ErrorReporter;
+import miniJava.AbstractSyntaxTrees.ClassDecl;
 import miniJava.AbstractSyntaxTrees.Declaration;
-import miniJava.AbstractSyntaxTrees.Identifier;
 
 public class IdentificationTable {
 
@@ -87,9 +87,10 @@ public class IdentificationTable {
 		return null;
 	}
 	
-	public Declaration checkMemberDecls(Declaration decl){
+	public Declaration checkMemberDecls(ClassDecl decl, String id){
 		HashMap<String, Declaration> classDecls = scopes.get(1);
 		Declaration matchingDecl = classDecls.get(decl.name);
+		
 		return matchingDecl;
 	}
 

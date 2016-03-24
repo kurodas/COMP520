@@ -182,7 +182,7 @@ public class Parser {
 			//Initialize empty list in case there are no statements
 			StatementList statementList = new StatementList();
 			while (token.kind != TokenKind.RIGHTBRACKET)
-				statementList.add(parseStatement());
+				statementList.add(parseStatement(type));
 			accept(TokenKind.RIGHTBRACKET);
 			return new MethodDecl(new FieldDecl(isPrivate, isStatic, type, name, pos), 
 					parameterDeclList, statementList, pos);
@@ -210,7 +210,7 @@ public class Parser {
 		//Initialize empty list in case there are no statements
 		StatementList statementList = new StatementList();
 		while (token.kind != TokenKind.RIGHTBRACKET)
-			statementList.add(parseStatement());
+			statementList.add(parseStatement(new BaseType(TypeKind.VOID, pos)));
 		accept(TokenKind.RIGHTBRACKET);
 		return new MethodDecl(new FieldDecl(isPrivate, isStatic, new BaseType(TypeKind.VOID, currentPos), methodName, pos), parameterDeclList, statementList, pos);
 	}
@@ -282,7 +282,7 @@ public class Parser {
 	/*
 	 * 
 	 */
-	private Statement parseStatement(){
+	private Statement parseStatement(Type returnType){
 		SourcePosition currentPos = token.posn;
 		switch(token.kind){
 		//	{ Statement* }
@@ -290,7 +290,7 @@ public class Parser {
 			accept(TokenKind.LEFTBRACKET);
 			StatementList statementList = new StatementList();
 			while(token.kind != TokenKind.RIGHTBRACKET){
-				statementList.add(parseStatement());
+				statementList.add(parseStatement(returnType));
 			}
 			accept(TokenKind.RIGHTBRACKET);
 			return new BlockStmt(statementList, currentPos);
@@ -335,11 +335,11 @@ public class Parser {
 			Reference thisRef = new ThisRef(currentPos);
 			return parseQualifiedStatements(thisRef);
 		case RETURN:
-			return parseReturnStatement();
+			return parseReturnStatement(returnType);
 		case IF:
-			return parseIfStatement();
+			return parseIfStatement(returnType);
 		case WHILE:
-			return parseWhileStatement();
+			return parseWhileStatement(returnType);
 		default:
 			parseError("Invalid Term - expecting LEFTBRACKET, ID, INT, BOOLEAN, THIS, RETURN, IF, or WHILE but found " + token.kind);
 			return null;
@@ -403,7 +403,7 @@ public class Parser {
 	}
 	
 	//	return Expression? ;
-	private Statement parseReturnStatement(){
+	private Statement parseReturnStatement(Type returnType){
 		SourcePosition currentPos = token.posn;
 		accept(TokenKind.RETURN);
 		Expression expr = null;
@@ -411,31 +411,31 @@ public class Parser {
 			expr = parseExprA();
 		}
 		accept(TokenKind.SEMICOLON);
-		return new ReturnStmt(expr, currentPos);
+		return new ReturnStmt(expr, returnType, currentPos);
 	}
 	
-	private Statement parseIfStatement(){
+	private Statement parseIfStatement(Type returnType){
 		SourcePosition currentPos = token.posn;
 		accept(TokenKind.IF);
 		accept(TokenKind.LEFTPAREN);
 		Expression ifCondition = parseExprA();
 		accept(TokenKind.RIGHTPAREN);
-		Statement ifStmt = parseStatement();
+		Statement ifStmt = parseStatement(returnType);
 		Statement elseStmt = null;
 		if(token.kind == TokenKind.ELSE){
 			accept(TokenKind.ELSE);
-			elseStmt = parseStatement();
+			elseStmt = parseStatement(returnType);
 		}
 		return new IfStmt(ifCondition, ifStmt, elseStmt, currentPos);
 	}
 	//	while '(' Expression ')' Statement
-	private Statement parseWhileStatement(){
+	private Statement parseWhileStatement(Type returnType){
 		SourcePosition currentPos = token.posn;
 		accept(TokenKind.WHILE);
 		accept(TokenKind.LEFTPAREN);
 		Expression whileCondition = parseExprA();
 		accept(TokenKind.RIGHTPAREN);
-		Statement loopContent = parseStatement();
+		Statement loopContent = parseStatement(returnType);
 		return new WhileStmt(whileCondition, loopContent,currentPos);
 	}
 	

@@ -10,8 +10,9 @@ import miniJava.SyntacticAnalyzer.SourcePosition;
 public class ReturnStmt extends Statement 
 {
 
-	public ReturnStmt(Expression e, SourcePosition posn){
+	public ReturnStmt(Expression e, Type rt, SourcePosition posn){
 		super(posn);
+		returnType = rt;
 		returnExpr = e;
 	}
 
@@ -21,4 +22,5 @@ public class ReturnStmt extends Statement
 
 	public Expression returnExpr;
 	public Statement body;
+	public Type returnType;
 }	

@@ -12,5 +12,5 @@ public abstract class Expression extends AST {
   public Expression(SourcePosition posn) {
     super (posn);
   }
-  
+  public Type type;
 }

@@ -46,7 +46,7 @@ public class Compiler {
 
 		System.out.println("Syntactic analysis ... ");
 		AST ast;
-		try {
+//		try {
 			ast = parser.parse();
 			System.out.println("Syntactic analysis complete:  ");
 			if (reporter.hasErrors()) {
@@ -57,12 +57,13 @@ public class Compiler {
 				Identification identification = new Identification(reporter);
 				identification.check(ast);
 				if(reporter.hasErrors()){
-//					System.out.println("Identification errors");
+					System.out.println("Identification errors");
 					System.exit(4);
 				}
 				TypeChecker typeChecker = new TypeChecker(reporter);
 				typeChecker.check(ast);
 				if(reporter.hasErrors()){
+					System.out.println("Type checking errors");
 					System.exit(4);
 				}
 				System.out.println("valid MiniJava");
@@ -70,12 +71,12 @@ public class Compiler {
 //				astDisplay.showTree(ast);
 				System.exit(0);
 			}
-		} catch (Throwable e) {
-			if (reporter.hasErrors()) {
-				System.out.println("Syntactic analysis complete: INVALID MiniJava");
-			}
-			System.exit(4);
-		}
+//		} catch (Throwable e) {
+//			if (reporter.hasErrors()) {
+//				System.out.println("Syntactic analysis complete: INVALID MiniJava");
+//			}
+//			System.exit(4);
+//		}
 	}
 	
 	private static String getFileExtension(String arg){
