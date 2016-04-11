@@ -62,14 +62,16 @@ public class TypeChecker implements Visitor<Object, Type> {
 	}
 	
 	public boolean checkTypeEquality(Type type1, Type type2) {
-//		Type type1 = node1.visit(this, new Object());
-//		Type type2 = node2.visit(this, new Object());
+		// Type type1 = node1.visit(this, new Object());
+		// Type type2 = node2.visit(this, new Object());
 		if (type1.typeKind == TypeKind.CLASS
 				&& type2.typeKind == TypeKind.CLASS) {
 			return ((ClassType) type1).className
 					.equals(((ClassType) type2).className);
-		} else if (type1.typeKind == TypeKind.ERROR
-				|| type2.typeKind == TypeKind.ERROR) {
+		} else if ((type1.typeKind == TypeKind.CLASS && type2.typeKind == TypeKind.NULL)
+				|| (type1.typeKind == TypeKind.NULL && type2.typeKind == TypeKind.CLASS)
+				|| (type1.typeKind == TypeKind.NULL && type2.typeKind == TypeKind.NULL)
+				|| (type1.typeKind == TypeKind.ERROR || type2.typeKind == TypeKind.ERROR)) {
 			return true;
 		} else
 			return type1.typeKind == type2.typeKind;
